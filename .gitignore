@@ -1,0 +1,12 @@
+bin/
+obj/
+*.user
+*.suo
+.vs/
+.idea/
+.DS_Store
+out/
+*.app/
+*.apk
+*.ipa
+TestResults/

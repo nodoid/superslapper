@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!--
+      Built for every platform by default. When publishing with a RuntimeIdentifier
+      the list is narrowed to the one that matches, otherwise restore tries to pull
+      the Mono runtime pack for the wrong platform.
+    -->
+    <TargetFrameworks>net10.0;net10.0-windows;net10.0-android;net10.0-ios</TargetFrameworks>
+    <TargetFrameworks Condition="'$(RuntimeIdentifier)' != '' and $(RuntimeIdentifier.StartsWith('win'))">net10.0-windows</TargetFrameworks>
+    <TargetFrameworks Condition="'$(RuntimeIdentifier)' != '' and $(RuntimeIdentifier.StartsWith('osx'))">net10.0</TargetFrameworks>
+    <TargetFrameworks Condition="'$(RuntimeIdentifier)' != '' and $(RuntimeIdentifier.StartsWith('android'))">net10.0-android</TargetFrameworks>
+    <TargetFrameworks Condition="'$(RuntimeIdentifier)' != '' and $(RuntimeIdentifier.StartsWith('ios'))">net10.0-ios</TargetFrameworks>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>SuperSlapper.Game</RootNamespace>
+    <AssemblyName>SuperSlapper.Game</AssemblyName>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <SupportedOSPlatformVersion Condition="'$(TargetFramework)' == 'net10.0-android'">32.0</SupportedOSPlatformVersion>
+    <RuntimeIdentifiers Condition="'$(TargetFramework)' == 'net10.0-android'">android-arm;android-arm64;android-x86;android-x64</RuntimeIdentifiers>
+    <SupportedOSPlatformVersion Condition="'$(TargetFramework)' == 'net10.0-ios'">18.0</SupportedOSPlatformVersion>
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SuperSlapper.Core\SuperSlapper.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.6" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-windows'">
+    <PackageReference Include="MonoGame.Framework.WindowsDX" Version="3.8.6" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-android'">
+    <PackageReference Include="MonoGame.Framework.Android" Version="3.8.6" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-ios'">
+    <PackageReference Include="MonoGame.Framework.iOS" Version="3.8.6" />
+  </ItemGroup>
+
+</Project>

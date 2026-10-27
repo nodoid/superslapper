@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SuperSlapper.Android/SuperSlapper.Android.csproj" />
+    <Project Path="src/SuperSlapper.Core/SuperSlapper.Core.csproj" />
+    <Project Path="src/SuperSlapper.Desktop/SuperSlapper.Desktop.csproj" />
+    <Project Path="src/SuperSlapper.Game/SuperSlapper.Game.csproj" />
+    <Project Path="src/SuperSlapper.iOS/SuperSlapper.iOS.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SuperSlapper.Core.Tests/SuperSlapper.Core.Tests.csproj" />
+  </Folder>
+</Solution>
