@@ -1,4 +1,5 @@
 using SuperSlapper.Core.Fight;
+using SuperSlapper.Core.Localisation;
 using SuperSlapper.Core.Fighters;
 using SuperSlapper.Core.Leagues;
 using SuperSlapper.Core.Random;
@@ -494,22 +495,24 @@ public sealed class CareerService
         var playerWon = winner.Id == state.PlayerId;
         if (playerWon && weighIn is { MadeWeight: false })
         {
-            changes.Add("Missed weight: not eligible for the championship.");
+            changes.Add(Loc.T("belt.missedWeight"));
             return changes;
         }
 
         if (belt.HolderId == winner.Id)
         {
             belt.RecordDefence();
-            changes.Add($"{winner.ShortName} defends the {WeightClasses.Get(state.PlayerDivision).Name} title.");
+            changes.Add(Loc.T("belt.defends", winner.ShortName,
+                WeightClasses.Get(state.PlayerDivision).Name));
         }
         else
         {
-            var previous = belt.HolderId is null ? "the vacant title" :
-                state.FindFighter(belt.HolderId)?.ShortName ?? "the champion";
+            var previous = belt.HolderId is null ? Loc.T("belt.vacantTitle") :
+                state.FindFighter(belt.HolderId)?.ShortName ?? Loc.T("belt.champion");
             belt.Award(winner.Id, winner.DisplayName, state.Day);
             belt.RecordDefence();
-            changes.Add($"{winner.ShortName} takes the {WeightClasses.Get(state.PlayerDivision).Name} title from {previous}.");
+            changes.Add(Loc.T("belt.takes", winner.ShortName,
+                WeightClasses.Get(state.PlayerDivision).Name, previous));
         }
 
         var table = state.Rankings.Get(league.Id, state.PlayerDivision);

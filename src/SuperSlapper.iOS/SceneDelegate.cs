@@ -4,13 +4,10 @@ using UIKit;
 namespace SuperSlapper.iOS;
 
 /// <summary>
-/// iOS 26 kills apps that still use the pre-scene life cycle, so the scene owns
-/// the window and MonoGame's view controller is moved into it.
-///
-/// MonoGame builds its own UIWindow when the game is constructed, before any
-/// scene exists. That window is detached from the scene hierarchy, so its
-/// content is re-homed here and the leftover window is hidden - otherwise it
-/// stays key and paints an empty screen over the game.
+/// iOS 26 kills apps that still use the pre-scene life cycle, so the scene has to
+/// own a window. MonoGame builds its own window, view controller and GL view before
+/// any scene exists, and the three only work as a piece, so the scene is handed to
+/// MonoGame's window rather than a second window being built around its view.
 /// </summary>
 [Register("SceneDelegate")]
 public class SceneDelegate : UIResponder, IUIWindowSceneDelegate
@@ -25,28 +22,11 @@ public class SceneDelegate : UIResponder, IUIWindowSceneDelegate
             return;
         }
 
-        var window = new UIWindow(windowScene)
-        {
-            BackgroundColor = UIColor.FromRGB(0x0d, 0x15, 0x26),
-        };
-        Window = window;
-
-        var host = new UIViewController();
-        window.RootViewController = host;
-
-        var gameView = Program.GameView;
-        if (gameView != null)
-        {
-            // The view is taken rather than its controller: MonoGame has already
-            // made that controller the root of its own window, and UIKit refuses
-            // to reparent a root view controller as a child.
-            var hostView = host.View!;
-            gameView.Frame = hostView.Bounds;
-            gameView.AutoresizingMask = UIViewAutoresizing.FlexibleDimensions;
-            hostView.AddSubview(gameView);
-            Program.GameWindow?.Hidden = true;
-        }
-
-        window.MakeKeyAndVisible();
+        // The window goes up here and the game's view controller is moved into it as
+        // soon as the game has one.
+        Window = Program.ConnectScene(windowScene, this);
     }
+
+    [Export("sceneDidBecomeActive:")]
+    public void DidBecomeActive(UIScene scene) => Program.OnSceneActive();
 }

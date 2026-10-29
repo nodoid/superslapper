@@ -1,4 +1,5 @@
 using SuperSlapper.Core.Fighters;
+using SuperSlapper.Core.Localisation;
 using SuperSlapper.Core.Random;
 
 namespace SuperSlapper.Core.Training;
@@ -55,9 +56,9 @@ public sealed class TrainingResult
         get
         {
             var parts = AttributeGains.Where(kv => kv.Value > 0)
-                .Select(kv => $"+{kv.Value} {kv.Key}")
+                .Select(kv => Loc.T("camp.gain", kv.Value, Loc.T($"attribute.{kv.Key}")))
                 .ToList();
-            return parts.Count == 0 ? "No measurable gain" : string.Join(", ", parts);
+            return parts.Count == 0 ? Loc.T("camp.noGain") : string.Join(", ", parts);
         }
     }
 }
@@ -109,7 +110,7 @@ public sealed class TrainingEngine
 
         if (!CanTrain(fighter, activity))
         {
-            result.Messages.Add("Too exhausted to train. Take a rest day.");
+            result.Messages.Add(Loc.T("camp.tooExhausted"));
             result.EnergyAfter = fighter.Energy;
             return result;
         }
@@ -121,7 +122,7 @@ public sealed class TrainingEngine
         if (overtrained)
         {
             energyFactor *= Balance.OvertrainingGainFactor;
-            result.Messages.Add("Overtrained: gains cut in half today.");
+            result.Messages.Add(Loc.T("camp.overtrained"));
         }
 
         var repetitionFactor = previousActivityId == activity.Id

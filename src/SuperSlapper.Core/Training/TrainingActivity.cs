@@ -1,3 +1,5 @@
+using SuperSlapper.Core.Localisation;
+
 namespace SuperSlapper.Core.Training;
 
 public enum TrainingFocus
@@ -22,6 +24,12 @@ public sealed class TrainingActivity
     public string Id { get; set; } = "";
     public string Name { get; set; } = "";
     public string Description { get; set; } = "";
+
+    /// <summary>The session's name as the player reads it.</summary>
+    public string DisplayName => Loc.T($"camp.{Id}.name");
+
+    /// <summary>What the session does, in one line.</summary>
+    public string DisplayDescription => Loc.T($"camp.{Id}.desc");
     public TrainingFocus Focus { get; set; } = TrainingFocus.Strength;
 
     /// <summary>Attribute -> base points earned per session.</summary>

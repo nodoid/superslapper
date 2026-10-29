@@ -1,4 +1,5 @@
 using SuperSlapper.Core.Fight;
+using SuperSlapper.Core.Localisation;
 using SuperSlapper.Core.Rules;
 
 namespace SuperSlapper.Core.Career;
@@ -39,10 +40,10 @@ public sealed class CardBout
 
     public string SlotName => Slot switch
     {
-        CardSlot.MainEvent => "MAIN EVENT",
-        CardSlot.CoMain => "CO-MAIN",
-        CardSlot.MainCard => "MAIN CARD",
-        _ => "UNDERCARD"
+        CardSlot.MainEvent => Loc.T("card.mainEvent"),
+        CardSlot.CoMain => Loc.T("card.coMain"),
+        CardSlot.MainCard => Loc.T("card.mainCard"),
+        _ => Loc.T("card.undercard")
     };
 
     public string ResultText
@@ -51,16 +52,17 @@ public sealed class CardBout
         {
             if (Result is null)
             {
-                return "TBA";
+                return Loc.T("card.tba");
             }
 
             if (Result.IsDraw)
             {
-                return $"DRAW · {Result.Kind.Display()}";
+                return Loc.T("card.drawResult", Result.Kind.Display());
             }
 
             var winner = Result.WinnerId == FighterAId ? FighterAName : FighterBName;
-            return $"{winner.Split(' ')[^1].ToUpperInvariant()} · {Result.Kind.ShortDisplay()} R{Result.EndRound}";
+            return Loc.T("card.boutResult", winner.Split(' ')[^1].ToUpperInvariant(),
+                Result.Kind.ShortDisplay(), Result.EndRound);
         }
     }
 }

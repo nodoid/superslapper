@@ -52,7 +52,8 @@ public static class WorldGenerator
     };
 
     public static CareerState Create(string firstName, string lastName, string nickname,
-        WeightClassId division, int seed, string careerName = "Career", Stance? stance = null)
+        WeightClassId division, int seed, string careerName = "Career", Stance? stance = null,
+        string? leagueId = null)
     {
         var rng = new RandomSource(seed);
         var state = new CareerState
@@ -60,7 +61,7 @@ public static class WorldGenerator
             CareerName = careerName,
             Seed = seed,
             PlayerDivision = division,
-            PlayerLeagueId = Leagues.Leagues.AmateurCircuit.Id,
+            PlayerLeagueId = leagueId ?? Leagues.Leagues.AmateurCircuit.Id,
             Day = 0,
             Season = 1
         };

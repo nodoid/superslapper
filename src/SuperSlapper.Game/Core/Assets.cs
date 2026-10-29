@@ -125,7 +125,8 @@ public sealed class Assets : IDisposable
     public static readonly string[] SoundNames =
     {
         "applause", "applause_wild", "bell", "bell_end", "crowd_boo", "crowd_cheer",
-        "fanfare", "ko", "slap_heavy", "slap_light", "ui_click", "ui_confirm", "whiff"
+        "fanfare", "ko", "music_fight", "music_menu", "music_victory", "slap_heavy",
+        "slap_light", "ui_click", "ui_confirm", "whiff"
     };
 
     public void LoadAll()
@@ -258,17 +259,24 @@ public sealed class Assets : IDisposable
     public SoundEffect? Sound(string name) =>
         _sounds.TryGetValue(name, out var sound) ? sound : null;
 
+    /// <summary>
+    /// Scales every effect played through <see cref="Play"/>. Music is played by
+    /// the music player instead of through here, so it has a level of its own.
+    /// </summary>
+    public float EffectsVolume { get; set; } = 1f;
+
     public void Play(string name, float volume = 0.8f, float pitch = 0f, float pan = 0f)
     {
         var sound = Sound(name);
-        if (sound is null)
+        if (sound is null || EffectsVolume <= 0f)
         {
             return;
         }
 
         try
         {
-            sound.Play(Math.Clamp(volume, 0f, 1f), Math.Clamp(pitch, -1f, 1f), Math.Clamp(pan, -1f, 1f));
+            sound.Play(Math.Clamp(volume * EffectsVolume, 0f, 1f), Math.Clamp(pitch, -1f, 1f),
+                Math.Clamp(pan, -1f, 1f));
         }
         catch
         {

@@ -3,6 +3,8 @@ using Microsoft.Xna.Framework.Graphics;
 using SuperSlapper.Core.Career;
 using SuperSlapper.Core.Fighters;
 using SuperSlapper.Core.Leagues;
+using SuperSlapper.Core.Localisation;
+using SuperSlapper.Core.Persistence;
 using SuperSlapper.Core.Rules;
 using SuperSlapper.Core.Titles;
 using SuperSlapper.Game.Core;
@@ -13,11 +15,16 @@ namespace SuperSlapper.Game.Screens;
 /// <summary>The career dashboard: who you are, where you are ranked, who is next.</summary>
 public sealed class HubScreen : Screen
 {
-    private readonly List<Button> _buttons = new();
+    private readonly SoundToggle _music;
+    private readonly SoundToggle _effects;
     private float _time;
 
     public HubScreen(GameContext context) : base(context)
     {
+        // In the top bar, clear of the career details on the left and of the purse,
+        // which is right-aligned and grows with the career.
+        _music = new SoundToggle(new Rectangle(700, 24, 240, 66), context, AudioChannel.Music);
+        _effects = new SoundToggle(new Rectangle(950, 24, 240, 66), context, AudioChannel.Effects);
     }
 
     private CareerState State => Context.State!;
@@ -25,7 +32,7 @@ public sealed class HubScreen : Screen
     public override void OnEnter()
     {
         base.OnEnter();
-        _buttons.Clear();
+        ClearControls();
 
         // One row across the foot of the screen, tall enough to hit with a
         // thumb and lifted clear of the phone's home-indicator band.
@@ -45,26 +52,35 @@ public sealed class HubScreen : Screen
             return button;
         }
 
-        _buttons.Add(Footer("TRAINING", () => Context.Screens.Push(new TrainingScreen(Context)),
+        Add(Footer(Loc.T("hub.training"), () => Context.Screens.Push(new TrainingScreen(Context)),
             ButtonStyle.Normal, "icon_weights"));
 
-        _buttons.Add(Footer("RANKINGS",
+        Add(Footer(Loc.T("hub.rankings"),
             () => Context.Screens.Push(new RecordsScreen(Context, RecordsScreen.Tab.Rankings)),
             ButtonStyle.Ghost));
 
-        _buttons.Add(Footer("BELTS",
+        Add(Footer(Loc.T("hub.belts"),
             () => Context.Screens.Push(new RecordsScreen(Context, RecordsScreen.Tab.Belts)),
             ButtonStyle.Ghost));
 
-        _buttons.Add(Footer("RULES",
+        Add(Footer(Loc.T("hub.rules"),
             () => Context.Screens.Push(new RecordsScreen(Context, RecordsScreen.Tab.Rules)),
             ButtonStyle.Ghost));
 
-        _buttons.Add(Footer("CALENDAR", () => Context.Screens.Push(new CalendarScreen(Context)),
+        Add(Footer(Loc.T("hub.calendar"), () => Context.Screens.Push(new CalendarScreen(Context)),
             ButtonStyle.Ghost));
 
-        _buttons.Add(Footer("WEIGH IN", () => Context.Screens.Push(new WeighInScreen(Context)),
+        Add(Footer(Loc.T("hub.weighIn"), () => Context.Screens.Push(new WeighInScreen(Context)),
             ButtonStyle.Danger, "icon_hand"));
+
+        // The sheet itself sits in the top bar: the footer row is full, and this is
+        // the only corner of it nothing else claims.
+        Add(new Button(new Rectangle(1540, 24, 280, 66), Loc.T("hub.settings"),
+            () => Context.Screens.Push(new SettingsScreen(Context)), ButtonStyle.Ghost));
+
+        // The sound chips handle their own presses, so they are declared as regions.
+        AddTarget(_music.ChipLabel, _music.Bounds);
+        AddTarget(_effects.ChipLabel, _effects.Bounds);
     }
 
     public override void Update(GameTime time, InputState input)
@@ -75,10 +91,13 @@ public sealed class HubScreen : Screen
         }
 
         _time += (float)time.ElapsedGameTime.TotalSeconds;
-        foreach (var button in _buttons.ToArray())
+        foreach (var button in Buttons.ToArray())
         {
             button.Update(time, input, () => Context.Assets.Play("ui_click", 0.5f));
         }
+
+        _music.Update(time, input);
+        _effects.Update(time, input);
     }
 
     public override void Draw(SpriteBatch batch, GameTime time)
@@ -109,8 +128,8 @@ public sealed class HubScreen : Screen
             Color.White, 0.72f);
 
         var textX = card.Left + 360;
-        batch.Text(Context.Assets.Font("small"), "YOUR FIGHTER", new Vector2(card.Left + 40, card.Top + 26),
-            Theme.Gold);
+        batch.Text(Context.Assets.Font("small"), Loc.T("hub.yourFighter"),
+            new Vector2(card.Left + 40, card.Top + 26), Theme.Gold);
         batch.Text(Context.Assets.Font("large"), player.LastName.ToUpperInvariant(),
             new Vector2(textX, card.Top + 40), Theme.White);
         batch.Text(Context.Assets.Font("body"), $"\"{player.Nickname}\"", new Vector2(textX + 4, card.Top + 130),
@@ -120,7 +139,7 @@ public sealed class HubScreen : Screen
 
         var division = WeightClasses.Get(state.PlayerDivision);
         batch.Text(Context.Assets.Font("body"),
-            $"{division.Name} · {Context.FormatWeight(player.WeightPounds)}",
+            Loc.T("hub.weightLine", division.Name, Context.FormatWeight(player.WeightPounds)),
             new Vector2(textX, card.Top + 260), Theme.White);
 
         var table = state.Rankings.Get(league.Id, state.PlayerDivision);
@@ -128,9 +147,9 @@ public sealed class HubScreen : Screen
         var isChampion = belt.HolderId == player.Id;
         var position = table.PositionOf(player.Id);
 
-        var rankText = isChampion ? "WORLD CHAMPION"
-            : position == int.MaxValue ? "UNRANKED"
-            : $"RANKED #{position}";
+        var rankText = isChampion ? Loc.T("hub.worldChampion")
+            : position == int.MaxValue ? Loc.T("hub.unranked")
+            : Loc.T("hub.ranked", position);
         batch.Text(Context.Assets.Font("body"), rankText, new Vector2(textX, card.Top + 310),
             isChampion ? Theme.Gold : Theme.White);
 
@@ -143,9 +162,12 @@ public sealed class HubScreen : Screen
         // Attribute bars.
         var stats = new[]
         {
-            ("POWER", player.Attributes.Power), ("AIM", player.Attributes.Aim),
-            ("CHIN", player.Attributes.Chin), ("ENDURANCE", player.Attributes.Endurance),
-            ("REFLEX", player.Attributes.Reflex), ("MASS", player.Attributes.Mass)
+            (Loc.T("attribute.Power").ToUpperInvariant(), player.Attributes.Power),
+            (Loc.T("attribute.Aim").ToUpperInvariant(), player.Attributes.Aim),
+            (Loc.T("attribute.Chin").ToUpperInvariant(), player.Attributes.Chin),
+            (Loc.T("attribute.Endurance").ToUpperInvariant(), player.Attributes.Endurance),
+            (Loc.T("attribute.Reflex").ToUpperInvariant(), player.Attributes.Reflex),
+            (Loc.T("attribute.Mass").ToUpperInvariant(), player.Attributes.Mass)
         };
 
         for (var i = 0; i < stats.Length; i++)
@@ -158,32 +180,35 @@ public sealed class HubScreen : Screen
 
         // Condition row.
         var energyY = card.Bottom - 90;
-        StatBar.Draw(batch, Context.Assets, new Rectangle(card.Left + 60, energyY, 240, 22), "ENERGY",
-            player.Energy, Theme.Green);
-        StatBar.Draw(batch, Context.Assets, new Rectangle(card.Left + 340, energyY, 240, 22), "HEAD DAMAGE",
-            player.Damage, Theme.Amber);
-        StatBar.Draw(batch, Context.Assets, new Rectangle(card.Left + 620, energyY, 240, 22), "POPULARITY",
-            player.Popularity, Theme.Gold);
+        StatBar.Draw(batch, Context.Assets, new Rectangle(card.Left + 60, energyY, 240, 22),
+            Loc.T("hub.energy"), player.Energy, Theme.Green);
+        StatBar.Draw(batch, Context.Assets, new Rectangle(card.Left + 340, energyY, 240, 22),
+            Loc.T("hub.headDamage"), player.Damage, Theme.Amber);
+        StatBar.Draw(batch, Context.Assets, new Rectangle(card.Left + 620, energyY, 240, 22),
+            Loc.T("hub.popularity"), player.Popularity, Theme.Gold);
 
         if (player.IsInjured)
         {
             var injury = player.ActiveInjuries.OrderByDescending(i => i.DaysRemaining).First();
             batch.Text(Context.Assets.Font("small"),
-                $"INJURED: {injury.DisplayName} ({injury.SeverityText}) · {injury.DaysRemaining} days",
+                Loc.T("hub.injured", injury.DisplayName, injury.SeverityText, injury.DaysRemaining),
                 new Vector2(card.Left + 60, energyY + 36), Theme.RedLight);
         }
         else
         {
-            batch.Text(Context.Assets.Font("small"), "No injuries reported.",
+            batch.Text(Context.Assets.Font("small"), Loc.T("hub.noInjuries"),
                 new Vector2(card.Left + 60, energyY + 36), Theme.Green);
         }
 
         DrawFightCard(batch, state, league);
 
-        foreach (var button in _buttons.ToArray())
+        foreach (var button in Buttons.ToArray())
         {
             button.Draw(batch, Context.Assets);
         }
+
+        _music.Draw(batch);
+        _effects.Draw(batch);
     }
 
     private void DrawTopBar(SpriteBatch batch, CareerState state, League league)
@@ -193,13 +218,13 @@ public sealed class HubScreen : Screen
         batch.Text(Context.Assets.Font("medium"), state.CareerName.ToUpperInvariant(),
             new Vector2(80, 26), Theme.Gold);
         batch.Text(Context.Assets.Font("small"),
-            $"{league.Name} · Prestige {league.Prestige} · Season {state.Season}",
+            Loc.T("hub.leagueLine", league.DisplayName, league.Prestige, state.Season),
             new Vector2(80, 72), Theme.Muted);
 
-        batch.Text(Context.Assets.Font("medium"), $"${state.Money:N0}",
+        batch.Text(Context.Assets.Font("medium"), Loc.T("hub.money", state.Money.ToString("N0")),
             new Vector2(1500, 26), Theme.Green, 1f, TextAlign.Right);
         batch.Text(Context.Assets.Font("small"),
-            $"Day {state.Day} · {Context.UnitLabel}",
+            Loc.T("hub.dayLine", state.Day, Context.UnitLabel),
             new Vector2(1500, 72), Theme.Muted, 1f, TextAlign.Right);
     }
 
@@ -211,19 +236,20 @@ public sealed class HubScreen : Screen
         var offer = state.Offer;
         if (offer is null)
         {
-            batch.Text(Context.Assets.Font("medium"), "NO BOUT BOOKED",
+            batch.Text(Context.Assets.Font("medium"), Loc.T("hub.noBout"),
                 new Vector2(rect.Center.X, rect.Center.Y), Theme.Muted, 1f, TextAlign.Centre);
             return;
         }
 
-        batch.Text(Context.Assets.Font("small"), "NEXT BOUT", new Vector2(rect.Left + 40, rect.Top + 26),
-            Theme.Gold);
+        batch.Text(Context.Assets.Font("small"), Loc.T("hub.nextBout"),
+            new Vector2(rect.Left + 40, rect.Top + 26), Theme.Gold);
 
         if (offer.TitleFight)
         {
             var badge = new Rectangle(rect.Right - 300, rect.Top + 24, 260, 52);
             batch.Fill(badge, Theme.Gold);
-            batch.Text(Context.Assets.Font("small"), "CHAMPIONSHIP", new Vector2(badge.Center.X, badge.Top + 12),
+            batch.Text(Context.Assets.Font("small"), Loc.T("hub.championship"),
+                new Vector2(badge.Center.X, badge.Top + 12),
                 Theme.Ink, 1f, TextAlign.Centre, shadow: false);
         }
 
@@ -242,30 +268,30 @@ public sealed class HubScreen : Screen
         {
             // Below the portrait and the ranking rows, so it never collides.
             batch.Text(Context.Assets.Font("body"),
-                $"{opponent.Record.DisplayWithKo} · Overall {opponent.Overall}",
+                Loc.T("hub.opponentLine", opponent.Record.DisplayWithKo, opponent.Overall),
                 new Vector2(rect.Center.X, rect.Top + 580), Theme.Muted, 1f, TextAlign.Centre);
         }
 
         var days = offer.DaysUntilFight(state.Day);
         batch.Text(Context.Assets.Font("medium"),
-            days <= 0 ? "FIGHT DAY" : $"{days} DAYS",
+            days <= 0 ? Loc.T("hub.fightDay") : Loc.T("hub.days", days),
             new Vector2(rect.Left + 50, rect.Top + 120), days <= 0 ? Theme.RedLight : Theme.Gold);
 
         batch.Text(Context.Assets.Font("body"), offer.Billing,
             new Vector2(rect.Left + 50, rect.Top + 180), Theme.White);
         batch.Text(Context.Assets.Font("body"), offer.Venue,
             new Vector2(rect.Left + 50, rect.Top + 226), Theme.Muted);
-        batch.Text(Context.Assets.Font("body"), $"Purse: ${offer.Purse:N0}",
+        batch.Text(Context.Assets.Font("body"), Loc.T("hub.purse", offer.Purse.ToString("N0")),
             new Vector2(rect.Left + 50, rect.Top + 272), Theme.Green);
 
         var rules = league.Ruleset;
         batch.Text(Context.Assets.Font("small"),
-            $"{rules.Rounds} rounds · {rules.SlapsPerRound} slap/round · {rules.FoulsBeforeDisqualification} fouls = DQ",
+            Loc.T("hub.rulesLine", rules.Rounds, rules.SlapsPerRound, rules.FoulsBeforeDisqualification),
             new Vector2(rect.Left + 50, rect.Top + 320), Theme.Muted);
 
         // Ranking ladder around the player.
         var table = state.Rankings.Get(league.Id, state.PlayerDivision);
-        batch.Text(Context.Assets.Font("small"), "DIVISION TOP 5",
+        batch.Text(Context.Assets.Font("small"), Loc.T("hub.top5"),
             new Vector2(rect.Left + 50, rect.Top + 380), Theme.Gold);
 
         var rows = table.Entries.Take(5).ToList();
@@ -294,7 +320,7 @@ public sealed class HubScreen : Screen
         var pulse = 0.5f + 0.5f * (float)Math.Sin(Elapsed * 3f);
         batch.Fill(new Rectangle(rect.Left + 40, rect.Bottom - 96, rect.Width - 80, 60),
             Theme.Red * (0.25f + 0.25f * pulse));
-        batch.Text(Context.Assets.Font("body"), "FIGHT DAY - STEP ON THE SCALE",
+        batch.Text(Context.Assets.Font("body"), Loc.T("hub.stepOnScale"),
             new Vector2(rect.Center.X, rect.Bottom - 80), Theme.White, 1f, TextAlign.Centre);
     }
 }

@@ -2,6 +2,8 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using SuperSlapper.Core.Career;
 using SuperSlapper.Core.Fighters;
+using SuperSlapper.Core.Localisation;
+using SuperSlapper.Core.Rules;
 using SuperSlapper.Core.Training;
 using SuperSlapper.Game.Core;
 using Button = SuperSlapper.Game.Core.Button;
@@ -15,7 +17,6 @@ namespace SuperSlapper.Game.Screens;
 /// </summary>
 public sealed class TrainingScreen : Screen
 {
-    private readonly List<Button> _buttons = new();
     private string _toast = "";
     private Color _toastColour = Theme.White;
     private float _toastTimer;
@@ -34,7 +35,7 @@ public sealed class TrainingScreen : Screen
 
     private void Rebuild()
     {
-        _buttons.Clear();
+        ClearControls();
 
         // Two columns of sessions, skipping rest (which gets its own big button).
         var activities = TrainingCatalog.All.Where(a => a.Id != "rest").ToList();
@@ -45,46 +46,61 @@ public sealed class TrainingScreen : Screen
             var row = i / 2;
             var rect = new Rectangle(80 + col * 420, 210 + row * 118, 400, 104);
 
-            _buttons.Add(new Button(rect, activity.Name, () => Train(activity), ButtonStyle.Normal)
+            Add(new Button(rect, activity.DisplayName, () => Train(activity), ButtonStyle.Normal)
             {
-                SubText = $"{activity.EnergyCost} energy · {FocusName(activity.Focus)}",
+                SubText = Loc.T("camp.energyLine", activity.EnergyCost, FocusName(activity.Focus)),
                 IconKey = activity.IconKey
             });
         }
 
-        _buttons.Add(new Button(new Rectangle(80, 890, 400, 120), "REST DAY",
+        Add(new Button(new Rectangle(80, 890, 400, 120), Loc.T("camp.restButton"),
             () => Train(TrainingCatalog.Rest), ButtonStyle.Ghost)
         {
             IconKey = "icon_medkit",
-            SubText = "Recover energy, heal nothing"
+            SubText = Loc.T("camp.restNote")
         });
 
-        _buttons.Add(new Button(new Rectangle(500, 890, 320, 120), "BACK TO HUB",
+        // On the morning of the bout there is nothing left to train: the way out of
+        // the camp is the scales, so the way out of the screen is too.
+        var fightDay = Context.State is { Offer: { } offer } state && state.Day >= offer.FightDay;
+
+        Add(new Button(new Rectangle(500, 890, 320, 120),
+            fightDay ? Loc.T("camp.goWeighIn") : Loc.T("common.backToHub"),
             () =>
             {
                 Context.Persist();
+
+                if (fightDay)
+                {
+                    // Replaced rather than stacked on top of the camp, so BACK on
+                    // the scales still lands on the hub.
+                    Context.Screens.Pop();
+                    Context.Screens.Push(new WeighInScreen(Context));
+                    return;
+                }
+
                 Context.Screens.Pop();
-            }, ButtonStyle.Ghost));
+            }, fightDay ? ButtonStyle.Danger : ButtonStyle.Ghost));
     }
 
-    private static string FocusName(TrainingFocus focus) => focus switch
+    private static string FocusName(TrainingFocus focus) => Loc.T(focus switch
     {
-        TrainingFocus.Strength => "power",
-        TrainingFocus.Endurance => "endurance",
-        TrainingFocus.Aim => "aim",
-        TrainingFocus.SlapPower => "slap power",
-        TrainingFocus.Reflex => "reflex",
-        TrainingFocus.Recovery => "recovery",
-        TrainingFocus.WeightCut => "weight cut",
-        _ => "study"
-    };
+        TrainingFocus.Strength => "camp.focus.power",
+        TrainingFocus.Endurance => "camp.focus.endurance",
+        TrainingFocus.Aim => "camp.focus.aim",
+        TrainingFocus.SlapPower => "camp.focus.slapPower",
+        TrainingFocus.Reflex => "camp.focus.reflex",
+        TrainingFocus.Recovery => "camp.focus.recovery",
+        TrainingFocus.WeightCut => "camp.focus.weightCut",
+        _ => "camp.focus.study"
+    });
 
     private void Train(TrainingActivity activity)
     {
         var state = State;
         if (state.Offer is not null && state.Day >= state.Offer.FightDay)
         {
-            ShowToast("It is fight day. Go and weigh in.", Theme.RedLight);
+            ShowToast(Loc.T("camp.fightDay"), Theme.RedLight);
             return;
         }
 
@@ -94,7 +110,7 @@ public sealed class TrainingScreen : Screen
 
         if (!result.MadeProgress && result.Injury is null && result.EnergyAfter == before)
         {
-            ShowToast("Too tired to train - take a rest day.", Theme.RedLight);
+            ShowToast(Loc.T("camp.tooTired"), Theme.RedLight);
             return;
         }
 
@@ -102,7 +118,8 @@ public sealed class TrainingScreen : Screen
 
         if (result.Injury is not null)
         {
-            ShowToast($"{result.Injury.DisplayName}: out {result.Injury.DaysRemaining} days", Theme.RedLight);
+            ShowToast(Loc.T("camp.injuryToast", result.Injury.DisplayName, result.Injury.DaysRemaining),
+                Theme.RedLight);
         }
         else if (result.MadeProgress)
         {
@@ -110,7 +127,7 @@ public sealed class TrainingScreen : Screen
         }
         else
         {
-            ShowToast("No measurable gain. Rest and try again.", Theme.Muted);
+            ShowToast(Loc.T("camp.noGainAgain"), Theme.Muted);
         }
     }
 
@@ -134,7 +151,7 @@ public sealed class TrainingScreen : Screen
             _toastTimer -= dt;
         }
 
-        foreach (var button in _buttons.ToArray())
+        foreach (var button in Buttons.ToArray())
         {
             button.Update(time, input, () => Context.Assets.Play("ui_click", 0.4f));
         }
@@ -154,18 +171,23 @@ public sealed class TrainingScreen : Screen
         batch.Draw(Context.Assets.Tex("menu_bg"), new Rectangle(0, 0, GameSettings.VirtualWidth,
             GameSettings.VirtualHeight), Color.White);
 
-        batch.Text(Context.Assets.Font("large"), "TRAINING CAMP", new Vector2(80, 40), Theme.Gold);
+        batch.Text(Context.Assets.Font("large"), Loc.T("camp.title"), new Vector2(80, 40), Theme.Gold);
         batch.Text(Context.Assets.Font("small"),
-            $"Day {state.Day} · {Context.UnitLabel} · " +
-            (state.Offer is null ? "no bout booked" : $"fight in {Math.Max(0, state.Offer.DaysUntilFight(state.Day))} days"),
+            Loc.T("camp.wardLine", state.Day, Context.UnitLabel,
+                state.Offer is null
+                    ? Loc.T("camp.noBout")
+                    : Loc.T("camp.fightIn", Math.Max(0, state.Offer.DaysUntilFight(state.Day)))),
             new Vector2(80, 130), Theme.Muted);
 
         // Condition strip.
-        StatBar.Draw(batch, Context.Assets, new Rectangle(900, 60, 300, 22), "ENERGY", player.Energy, Theme.Green);
-        StatBar.Draw(batch, Context.Assets, new Rectangle(1240, 60, 300, 22), "HEAD DAMAGE", player.Damage, Theme.Amber);
-        StatBar.Draw(batch, Context.Assets, new Rectangle(1580, 60, 260, 22), "POPULARITY", player.Popularity, Theme.Gold);
+        StatBar.Draw(batch, Context.Assets, new Rectangle(900, 60, 300, 22),
+            Loc.T("hub.energy"), player.Energy, Theme.Green);
+        StatBar.Draw(batch, Context.Assets, new Rectangle(1240, 60, 300, 22),
+            Loc.T("hub.headDamage"), player.Damage, Theme.Amber);
+        StatBar.Draw(batch, Context.Assets, new Rectangle(1580, 60, 260, 22),
+            Loc.T("hub.popularity"), player.Popularity, Theme.Gold);
 
-        foreach (var button in _buttons.ToArray())
+        foreach (var button in Buttons.ToArray())
         {
             button.Draw(batch, Context.Assets);
         }
@@ -187,17 +209,27 @@ public sealed class TrainingScreen : Screen
 
     private void DrawSidePanel(SpriteBatch batch, CareerState state, Fighter player)
     {
-        var rect = new Rectangle(980, 210, 860, 690);
+        // Tall enough for the four blocks below to sit one under the other: the camp
+        // log, the injury report, the weight watch and the attributes. Each block is
+        // anchored from the top of the panel, except the attributes, which are pinned
+        // to the bottom so a long camp log can never push them out of the frame.
+        var rect = new Rectangle(980, 210, 860, 790);
         batch.NineSlice(Context.Assets.Tex("panel"), rect, 40, Color.White);
 
-        batch.Text(Context.Assets.Font("small"), "CAMP LOG", new Vector2(rect.Left + 36, rect.Top + 24), Theme.Gold);
+        batch.Text(Context.Assets.Font("small"), Loc.T("camp.log"),
+            new Vector2(rect.Left + 36, rect.Top + 24), Theme.Gold);
 
-        var log = state.TrainingLog.TakeLast(7).Reverse().ToList();
-        var y = rect.Top + 66;
+        var log = state.TrainingLog.TakeLast(6).Reverse().ToList();
+        var y = rect.Top + 64;
         foreach (var entry in log)
         {
-            batch.Text(Context.Assets.Font("small"), $"Day {entry.Day}", new Vector2(rect.Left + 36, y), Theme.Muted);
-            batch.Text(Context.Assets.Font("small"), entry.ActivityName, new Vector2(rect.Left + 140, y), Theme.White);
+            batch.Text(Context.Assets.Font("small"), Loc.T("camp.day", entry.Day),
+                new Vector2(rect.Left + 36, y), Theme.Muted);
+            batch.Text(Context.Assets.Font("small"),
+                string.IsNullOrWhiteSpace(entry.ActivityId)
+                    ? entry.ActivityName
+                    : Loc.T($"camp.{entry.ActivityId}.name"),
+                new Vector2(rect.Left + 140, y), Theme.White);
             batch.Text(Context.Assets.Font("small"),
                 string.IsNullOrWhiteSpace(entry.GainSummary) ? "-" : entry.GainSummary,
                 new Vector2(rect.Left + 430, y), entry.Overtrained ? Theme.Amber : Theme.Green);
@@ -212,17 +244,18 @@ public sealed class TrainingScreen : Screen
 
         if (log.Count == 0)
         {
-            batch.Text(Context.Assets.Font("body"), "No sessions yet. Pick a drill on the left.",
+            batch.Text(Context.Assets.Font("body"), Loc.T("camp.noSessions"),
                 new Vector2(rect.Left + 36, y + 10), Theme.Muted);
         }
 
         // Injuries.
-        var injY = rect.Top + 330;
-        batch.Text(Context.Assets.Font("small"), "INJURY REPORT", new Vector2(rect.Left + 36, injY), Theme.Gold);
+        var injY = rect.Top + 272;
+        batch.Text(Context.Assets.Font("small"), Loc.T("camp.injuryReport"),
+            new Vector2(rect.Left + 36, injY), Theme.Gold);
         var injuries = player.ActiveInjuries.ToList();
         if (injuries.Count == 0)
         {
-            batch.Text(Context.Assets.Font("body"), "Clean bill of health.",
+            batch.Text(Context.Assets.Font("body"), Loc.T("camp.healthy"),
                 new Vector2(rect.Left + 36, injY + 40), Theme.Green);
         }
         else
@@ -232,57 +265,64 @@ public sealed class TrainingScreen : Screen
             {
                 var iy = injY + 40 + row * 34;
                 batch.Text(Context.Assets.Font("small"),
-                    $"{injury.DisplayName} ({injury.SeverityText}) - {injury.DaysRemaining} days",
+                    Loc.T("camp.injuryRow", injury.DisplayName, injury.SeverityText,
+                        injury.DaysRemaining),
                     new Vector2(rect.Left + 36, iy), Theme.RedLight);
                 batch.Text(Context.Assets.Font("tiny"),
-                    "affects " + string.Join(", ", injury.AffectedAttributes),
+                    Loc.T("camp.affects", string.Join(", ",
+                        injury.AffectedAttributes.Select(a => Loc.T($"attribute.{a}")))),
                     new Vector2(rect.Right - 40, iy + 4), Theme.Muted, 1f, TextAlign.Right);
                 row++;
             }
         }
 
         // Weight watch - the training/weigh-in link.
-        var wtY = rect.Top + 500;
-        batch.Text(Context.Assets.Font("small"), "WEIGHT WATCH", new Vector2(rect.Left + 36, wtY), Theme.Gold);
-        var division = SuperSlapper.Core.Rules.WeightClasses.Get(state.PlayerDivision);
+        var wtY = rect.Top + 418;
+        batch.Text(Context.Assets.Font("small"), Loc.T("camp.weightWatch"),
+            new Vector2(rect.Left + 36, wtY), Theme.Gold);
+        var division = WeightClasses.Get(state.PlayerDivision);
         batch.Text(Context.Assets.Font("body"),
-            $"Scale: {Context.FormatWeight(player.WeightPounds)}   Walk-around: {Context.FormatWeight(player.WalkAroundPounds)}",
+            Loc.T("camp.scale", Context.FormatWeight(player.WeightPounds),
+                Context.FormatWeight(player.WalkAroundPounds)),
             new Vector2(rect.Left + 36, wtY + 36), Theme.White);
         batch.Text(Context.Assets.Font("small"),
-            $"{division.Name} limit: {division.LimitText(Context.Units)}",
+            Loc.T("camp.limit", division.Name, division.LimitText(Context.Units)),
             new Vector2(rect.Left + 36, wtY + 78), Theme.Muted);
-
         var over = division.Limit is null
             ? 0m
             : Math.Max(0m, player.WeightPounds - division.Limit.Value.Pounds);
         if (over > 0m)
         {
             batch.Text(Context.Assets.Font("small"),
-                $"{Context.FormatWeight(over)} over - cut before the weigh-in or miss weight",
+                Loc.T("camp.over", Context.FormatWeight(over)),
                 new Vector2(rect.Left + 36, wtY + 114), Theme.RedLight);
         }
         else
         {
-            batch.Text(Context.Assets.Font("small"), "Inside the limit.",
+            batch.Text(Context.Assets.Font("small"), Loc.T("camp.insideLimit"),
                 new Vector2(rect.Left + 36, wtY + 114), Theme.Green);
         }
 
-        // Attribute readout.
-        batch.Text(Context.Assets.Font("small"), "ATTRIBUTES", new Vector2(rect.Left + 36, rect.Bottom - 210),
-            Theme.Gold);
+        // Attribute readout. Two columns leave the right of the panel to the fighter.
+        batch.Text(Context.Assets.Font("small"), Loc.T("camp.attributes"),
+            new Vector2(rect.Left + 36, rect.Bottom - 196), Theme.Gold);
 
         var effective = player.EffectiveAttributes();
         var attributes = new[]
         {
-            ("PWR", effective.Power), ("AIM", effective.Aim), ("CHIN", effective.Chin),
-            ("END", effective.Endurance), ("RFX", effective.Reflex), ("MASS", effective.Mass)
+            (Loc.T("attribute.Power.short"), effective.Power),
+            (Loc.T("attribute.Aim.short"), effective.Aim),
+            (Loc.T("attribute.Chin.short"), effective.Chin),
+            (Loc.T("attribute.Endurance.short"), effective.Endurance),
+            (Loc.T("attribute.Reflex.short"), effective.Reflex),
+            (Loc.T("attribute.Mass.short"), effective.Mass)
         };
 
         for (var i = 0; i < attributes.Length; i++)
         {
-            var x = rect.Left + 36 + (i % 3) * 270;
-            var ay = rect.Bottom - 170 + (i / 3) * 74;
-            StatBar.Draw(batch, Context.Assets, new Rectangle(x, ay, 240, 20), attributes[i].Item1,
+            var x = rect.Left + 36 + (i % 2) * 260;
+            var ay = rect.Bottom - 134 + (i / 2) * 54;
+            StatBar.Draw(batch, Context.Assets, new Rectangle(x, ay, 220, 20), attributes[i].Item1,
                 attributes[i].Item2, i == 0 ? Theme.Red : i == 1 ? Theme.Blue : Theme.Green);
         }
     }

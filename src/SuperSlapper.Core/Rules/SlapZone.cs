@@ -1,3 +1,5 @@
+using SuperSlapper.Core.Localisation;
+
 namespace SuperSlapper.Core.Rules;
 
 /// <summary>
@@ -37,32 +39,27 @@ public static class SlapZones
 
     public static bool IsIllegal(SlapZone zone) => Illegal.Contains(zone);
 
-    public static string DisplayName(SlapZone zone) => zone switch
-    {
-        SlapZone.LeftCheek => "Left cheek",
-        SlapZone.RightCheek => "Right cheek",
-        SlapZone.Jaw => "Jaw",
-        SlapZone.Chin => "Chin",
-        SlapZone.Temple => "Temple",
-        SlapZone.Ear => "Ear",
-        SlapZone.Eye => "Eye",
-        SlapZone.Nose => "Nose",
-        SlapZone.Throat => "Throat",
-        SlapZone.BackOfHead => "Back of the head",
-        SlapZone.Neck => "Neck",
-        _ => zone.ToString()
-    };
+    public static string DisplayName(SlapZone zone) => Loc.T($"zone.{Key(zone)}");
+
+    /// <summary>The zone as it reads inside a sentence, e.g. "the left cheek".</summary>
+    public static string DisplayNameLower(SlapZone zone) => Loc.T($"zone.{Key(zone)}.lower");
 
     /// <summary>Foul book description, as the referee would call it.</summary>
-    public static string FoulDescription(SlapZone zone) => zone switch
+    public static string FoulDescription(SlapZone zone) => Loc.T($"zone.{Key(zone)}.foul");
+
+    private static string Key(SlapZone zone) => zone switch
     {
-        SlapZone.Temple => "Slap to the temple",
-        SlapZone.Ear => "Slap to the ear",
-        SlapZone.Eye => "Slap to the eye",
-        SlapZone.Nose => "Slap across the nose",
-        SlapZone.Throat => "Slap to the throat",
-        SlapZone.BackOfHead => "Slap to the back of the head",
-        SlapZone.Neck => "Slap to the neck",
-        _ => "Illegal slap"
+        SlapZone.LeftCheek => "leftCheek",
+        SlapZone.RightCheek => "rightCheek",
+        SlapZone.Jaw => "jaw",
+        SlapZone.Chin => "chin",
+        SlapZone.Temple => "temple",
+        SlapZone.Ear => "ear",
+        SlapZone.Eye => "eye",
+        SlapZone.Nose => "nose",
+        SlapZone.Throat => "throat",
+        SlapZone.BackOfHead => "backOfHead",
+        SlapZone.Neck => "neck",
+        _ => "other"
     };
 }

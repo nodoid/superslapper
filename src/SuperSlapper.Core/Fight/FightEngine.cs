@@ -1,4 +1,5 @@
 using SuperSlapper.Core.Fighters;
+using SuperSlapper.Core.Localisation;
 using SuperSlapper.Core.Random;
 using SuperSlapper.Core.Rules;
 
@@ -74,7 +75,7 @@ public sealed class FightEngine
         ConditionB = new FighterCondition { FighterId = fighterB.Id };
 
         _strikerIsA = rng.NextDouble() < 0.5;
-        _firstStrikerWasA = _strikerIsA;
+        _openingStrikerIsA = _strikerIsA;
         Round = 1;
         Phase = FightPhase.AwaitingSlap;
     }
@@ -98,7 +99,12 @@ public sealed class FightEngine
     public int SlapsThisRoundB { get; private set; }
 
     private bool _strikerIsA;
-    private bool _firstStrikerWasA;
+
+    /// <summary>
+    /// Who threw first in round one. Every round opens on the same man: the order
+    /// is set by the coin toss before the bell and does not alternate.
+    /// </summary>
+    private readonly bool _openingStrikerIsA;
 
     public bool StrikerIsA => _strikerIsA;
 
@@ -116,9 +122,9 @@ public sealed class FightEngine
     public int SlapsRemainingForCurrentStriker =>
         Math.Max(0, Rules.SlapsPerRound - (_strikerIsA ? SlapsThisRoundA : SlapsThisRoundB));
 
-    public string RuleSummary =>
-        $"{Rules.Rounds} rounds x {Rules.SlapsPerRound} slap{(Rules.SlapsPerRound == 1 ? "" : "s")} · " +
-        $"{Rules.FoulsBeforeDisqualification} fouls = DQ · {Rules.CountOutSeconds}-count";
+    public string RuleSummary => Loc.T("fight.ruleSummary", Rules.Rounds, Rules.SlapsPerRound,
+        Loc.T(Rules.SlapsPerRound == 1 ? "fight.slap" : "fight.slaps"),
+        Rules.FoulsBeforeDisqualification, Rules.CountOutSeconds);
 
     /// <summary>
     /// Resolves the active striker's slap. Everything the referee could call -
@@ -167,8 +173,8 @@ public sealed class FightEngine
         {
             result.Verdict = SlapVerdict.Miss;
             result.Fouls.Add(RegisterFoul(!strikerIsA, FoulKind.Stepping,
-                $"{defender.LastName} stepped off the mark", result));
-            result.Commentary = $"{defender.LastName} steps away - foul, and the slap never lands.";
+                Loc.T("fight.foul.steppedOff", defender.LastName), result));
+            result.Commentary = Loc.T("fight.commentary.steppedOff", defender.LastName);
             strikerCondition.Stamina = Math.Max(0, strikerCondition.Stamina - 5);
             FinishTurn(strikerIsA, result, 0);
             return result;
@@ -180,12 +186,12 @@ public sealed class FightEngine
         if (roll > 0.35 + 0.65 * aimWithFlinch)
         {
             result.Verdict = SlapVerdict.Miss;
-            result.Commentary = $"{striker.LastName} swings and misses. {defender.LastName} smiles.";
+            result.Commentary = Loc.T("fight.commentary.miss", striker.LastName, defender.LastName);
             strikerCondition.Stamina = Math.Max(0, strikerCondition.Stamina - (int)(6 + 8 * attempt.PowerCharge));
             if (steppedIn)
             {
                 result.Fouls.Add(RegisterFoul(strikerIsA, FoulKind.Stepping,
-                    $"{striker.LastName} stepped in as they slapped", result));
+                    Loc.T("fight.foul.steppedIn", striker.LastName), result));
             }
 
             FinishTurn(strikerIsA, result, 0);
@@ -214,8 +220,8 @@ public sealed class FightEngine
             result.Verdict = SlapVerdict.Foul;
             var kind = illegalTechnique ? FoulKind.ClosedFist : FoulKind.IllegalZone;
             var what = illegalTechnique
-                ? "a closed fist"
-                : SlapZones.FoulDescription(zone).ToLowerInvariant();
+                ? Loc.T("fight.foul.closedFist")
+                : SlapZones.FoulDescription(zone);
 
             var foulDamage = (int)Math.Round(4 + 8 * attempt.PowerCharge);
             defenderCondition.Health = Math.Max(0, defenderCondition.Health - foulDamage);
@@ -227,7 +233,7 @@ public sealed class FightEngine
             if (flinched)
             {
                 result.Fouls.Add(RegisterFoul(!strikerIsA, FoulKind.Flinching,
-                    $"{defender.LastName} flinched", result));
+                    Loc.T("fight.foul.flinched", defender.LastName), result));
             }
 
             FinishTurn(strikerIsA, result, foulDamage);
@@ -299,13 +305,13 @@ public sealed class FightEngine
         if (flinched)
         {
             result.Fouls.Add(RegisterFoul(!strikerIsA, FoulKind.Flinching,
-                $"{defender.LastName} flinched away from the slap", result));
+                Loc.T("fight.foul.flinchedAway", defender.LastName), result));
         }
 
         if (steppedIn)
         {
             result.Fouls.Add(RegisterFoul(strikerIsA, FoulKind.Stepping,
-                $"{striker.LastName} stepped in with the slap", result));
+                Loc.T("fight.foul.steppedInWithSlap", striker.LastName), result));
         }
 
         FinishTurn(strikerIsA, result, applied);
@@ -317,16 +323,17 @@ public sealed class FightEngine
         if (knockdown)
         {
             return damage >= 40
-                ? $"Brutal open hand from {striker.LastName}! {defender.LastName} is down!"
-                : $"{striker.LastName} lands flush on the {SlapZones.DisplayName(zone).ToLowerInvariant()} and {defender.LastName} drops!";
+                ? Loc.T("fight.commentary.downHard", striker.LastName, defender.LastName)
+                : Loc.T("fight.commentary.down", striker.LastName,
+                    SlapZones.DisplayNameLower(zone), defender.LastName);
         }
 
         return damage switch
         {
-            >= 32 => $"{striker.LastName} detonates a slap. {defender.LastName} wobbles!",
-            >= 20 => $"Clean slap lands on the {SlapZones.DisplayName(zone).ToLowerInvariant()}.",
-            >= 10 => $"{striker.LastName} scores with a short open hand.",
-            _ => $"Glancing slap from {striker.LastName}."
+            >= 32 => Loc.T("fight.commentary.detonates", striker.LastName, defender.LastName),
+            >= 20 => Loc.T("fight.commentary.clean", SlapZones.DisplayNameLower(zone)),
+            >= 10 => Loc.T("fight.commentary.short", striker.LastName),
+            _ => Loc.T("fight.commentary.glancing", striker.LastName)
         };
     }
 
@@ -347,6 +354,33 @@ public sealed class FightEngine
         };
 
         return options[Rng.Next(0, options.Length)];
+    }
+
+    /// <summary>
+    /// The count was called and the hand never came. Every slap is preceded by the
+    /// striker's own hand and count, so letting the count pass is the delay the
+    /// rulebook already names - and it costs the striker the turn and a point.
+    /// </summary>
+    public SlapResult SlapTimedOut()
+    {
+        if (Phase != FightPhase.AwaitingSlap)
+        {
+            throw new InvalidOperationException($"No slap is due during phase {Phase}.");
+        }
+
+        var strikerIsA = _strikerIsA;
+        var result = new SlapResult
+        {
+            StrikerId = Striker.Id,
+            DefenderId = Defender.Id,
+            Round = Round,
+            Verdict = SlapVerdict.Forfeit
+        };
+
+        result.Fouls.Add(RegisterFoul(strikerIsA, FoulKind.Delay,
+            $"{Striker.LastName} never slapped on the count", result));
+        FinishTurn(strikerIsA, result, 0);
+        return result;
     }
 
     /// <summary>
@@ -377,11 +411,11 @@ public sealed class FightEngine
             condition.Disqualified = true;
             call.Disqualified = true;
             result.Disqualified = true;
-            result.Commentary = $"{fighter.LastName} has committed {condition.Fouls} fouls. Disqualified!";
+            result.Commentary = Loc.T("fight.commentary.disqualified", fighter.LastName, condition.Fouls);
         }
         else
         {
-            result.Commentary = $"Foul against {fighter.LastName}: {description}. Point deducted.";
+            result.Commentary = Loc.T("fight.commentary.foul", fighter.LastName, description);
         }
 
         return call;
@@ -479,7 +513,7 @@ public sealed class FightEngine
 
         if (!beat)
         {
-            outcome.Commentary = $"{down.LastName} cannot beat the count. It is all over!";
+            outcome.Commentary = Loc.T("fight.commentary.countFailed", down.LastName);
             FinishByKnockout(downIsA, count);
             return outcome;
         }
@@ -489,13 +523,12 @@ public sealed class FightEngine
         if (downCondition.KnockdownsThisRound >= Rules.MaxKnockdownsPerRound)
         {
             outcome.Knockout = true;
-            outcome.Commentary =
-                $"That is {downCondition.KnockdownsThisRound} knockdowns. The referee waves it off - technical knockout.";
+            outcome.Commentary = Loc.T("fight.commentary.countWavedOff", downCondition.KnockdownsThisRound);
             FinishByTechnicalKnockout(downIsA);
             return outcome;
         }
 
-        outcome.Commentary = $"{down.LastName} is up at {count}. The referee is satisfied.";
+        outcome.Commentary = Loc.T("fight.commentary.countUp", down.LastName, count);
         Phase = FightPhase.AwaitingSlap;
         AdvanceAfterSlap();
         return outcome;
@@ -537,7 +570,6 @@ public sealed class FightEngine
             return;
         }
 
-        Round++;
         SlapsThisRoundA = 0;
         SlapsThisRoundB = 0;
         ConditionA.KnockdownsThisRound = 0;
@@ -548,8 +580,7 @@ public sealed class FightEngine
         ConditionA.Stamina = Math.Min(100, ConditionA.Stamina + 20);
         ConditionB.Stamina = Math.Min(100, ConditionB.Stamina + 20);
 
-        _strikerIsA = !_firstStrikerWasA;
-        _firstStrikerWasA = _strikerIsA;
+        _strikerIsA = _openingStrikerIsA;
         Phase = FightPhase.RoundBreak;
     }
 
@@ -558,6 +589,10 @@ public sealed class FightEngine
     {
         if (Phase == FightPhase.RoundBreak)
         {
+            // The round number turns over here rather than at the end-of-round
+            // bell, so everything shown during the break - the scores, the round
+            // card's "END OF ROUND" - still names the round that just finished.
+            Round++;
             Phase = FightPhase.AwaitingSlap;
         }
     }
@@ -694,8 +729,8 @@ public sealed class FightEngine
             FighterAFoulLog = ConditionA.FoulLog.ToList(),
             FighterBFoulLog = ConditionB.FoulLog.ToList(),
             Headline = winner is null
-                ? $"{FighterA.DisplayName} and {FighterB.DisplayName} fight to a draw"
-                : $"{winner.DisplayName} beats {loser!.DisplayName} by {kind.Display()}"
+                ? Loc.T("fight.headline.draw", FighterA.DisplayName, FighterB.DisplayName)
+                : Loc.T("fight.headline.win", winner.DisplayName, loser!.DisplayName, kind.Display())
         };
     }
 

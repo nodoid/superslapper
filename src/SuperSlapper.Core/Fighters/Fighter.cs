@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using SuperSlapper.Core.Localisation;
 using SuperSlapper.Core.Rules;
 
 namespace SuperSlapper.Core.Fighters;
@@ -128,25 +129,9 @@ public sealed class Injury
         _ => Array.Empty<string>()
     };
 
-    public string DisplayName => Type switch
-    {
-        InjuryType.HandContusion => "Hand contusion",
-        InjuryType.WristSprain => "Wrist sprain",
-        InjuryType.ShoulderStrain => "Shoulder strain",
-        InjuryType.BackSpasm => "Back spasm",
-        InjuryType.RibBruising => "Rib bruising",
-        InjuryType.Concussion => "Concussion",
-        InjuryType.NeckStrain => "Neck strain",
-        InjuryType.BrokenJaw => "Broken jaw",
-        _ => Type.ToString()
-    };
+    public string DisplayName => Loc.T($"injury.{Type}");
 
-    public string SeverityText => Severity switch
-    {
-        InjurySeverity.Niggle => "niggle",
-        InjurySeverity.Moderate => "moderate",
-        _ => "serious"
-    };
+    public string SeverityText => Loc.T($"injury.severity.{Severity}");
 
     public Injury Clone() => new()
     {
@@ -182,7 +167,8 @@ public sealed class FightRecord
 
     public string Display => $"{Wins}-{Losses}-{Draws}";
 
-    public string DisplayWithKo => $"{Wins}-{Losses}-{Draws} ({KnockoutWins} KO)";
+    public string DisplayWithKo =>
+        Loc.T("record.withKo", Wins, Losses, Draws, KnockoutWins, Loc.T("outcome.ko"));
 
     public FightRecord Clone() => new()
     {

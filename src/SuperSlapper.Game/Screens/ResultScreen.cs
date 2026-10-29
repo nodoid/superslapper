@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using SuperSlapper.Core.Career;
 using SuperSlapper.Core.Fight;
+using SuperSlapper.Core.Localisation;
 using SuperSlapper.Game.Core;
 using Button = SuperSlapper.Game.Core.Button;
 
@@ -14,7 +15,6 @@ namespace SuperSlapper.Game.Screens;
 /// </summary>
 public sealed class ResultScreen : Screen
 {
-    private readonly List<Button> _buttons = new();
     private CareerOutcome _outcome;
     private float _beat;
     private bool _beltRevealed;
@@ -27,11 +27,14 @@ public sealed class ResultScreen : Screen
 
     private CareerState State => Context.State!;
 
+    /// <summary>Winning gets the ceremony music; anything else files back to the menu bed.</summary>
+    public override string? MusicTrack => _outcome.PlayerWon ? "music_victory" : "music_menu";
+
     public override void OnEnter()
     {
         base.OnEnter();
-        _buttons.Clear();
-        _buttons.Add(new Button(new Rectangle(740, 890, 440, 120), "CONTINUE",
+        ClearControls();
+        Add(new Button(new Rectangle(740, 890, 440, 120), Loc.T("resultScreen.continue"),
             () => Context.Screens.SetRoot(new HubScreen(Context)), ButtonStyle.Normal));
 
         Context.Assets.Play(_outcome.PlayerWon ? "fanfare" : "crowd_boo", 0.75f);
@@ -61,7 +64,7 @@ public sealed class ResultScreen : Screen
             }
         }
 
-        foreach (var button in _buttons.ToArray())
+        foreach (var button in Buttons.ToArray())
         {
             button.Update(time, input, () => Context.Assets.Play("ui_click", 0.5f));
         }
@@ -104,7 +107,8 @@ public sealed class ResultScreen : Screen
         var banner = new Rectangle(360, 60, 1200, 200);
         batch.NineSlice(Context.Assets.Tex("panel"), banner, 40, Color.White * 0.96f);
 
-        var headline = result.IsDraw ? "DRAW" : _outcome.PlayerWon ? "YOU WIN" : "YOU LOSE";
+        var headline = Loc.T(result.IsDraw ? "resultScreen.draw"
+            : _outcome.PlayerWon ? "resultScreen.win" : "resultScreen.lose");
         var colour = result.IsDraw ? Theme.Amber : _outcome.PlayerWon ? Theme.Gold : Theme.Red;
 
         var pulse = 1f + 0.02f * (float)Math.Sin(_beat * 3f);
@@ -116,19 +120,26 @@ public sealed class ResultScreen : Screen
         // Award panel: what this bout paid.
         var award = new Rectangle(1330, 300, 520, 620);
         batch.NineSlice(Context.Assets.Tex("panel"), award, 40, Color.White);
-        batch.Text(Context.Assets.Font("small"), "AWARD", new Vector2(award.Left + 30, award.Top + 24), Theme.Gold);
+        batch.Text(Context.Assets.Font("small"), Loc.T("resultScreen.award"),
+            new Vector2(award.Left + 30, award.Top + 24), Theme.Gold);
 
         var y = award.Top + 70;
-        DrawAwardRow(batch, award, ref y, "Purse", $"${_outcome.Purse:N0}", Theme.Green);
-        DrawAwardRow(batch, award, ref y, "Ranking points", $"+{_outcome.RankingPointsGained}", Theme.Gold);
-        DrawAwardRow(batch, award, ref y, "Record", player.Record.DisplayWithKo, Theme.White);
+        DrawAwardRow(batch, award, ref y, Loc.T("resultScreen.purse"),
+            Loc.T("resultScreen.money", _outcome.Purse.ToString("N0")), Theme.Green);
+        DrawAwardRow(batch, award, ref y, Loc.T("resultScreen.rankingPoints"),
+            Loc.T("resultScreen.plus", _outcome.RankingPointsGained), Theme.Gold);
+        DrawAwardRow(batch, award, ref y, Loc.T("resultScreen.record"),
+            player.Record.DisplayWithKo, Theme.White);
 
-        var position = _outcome.NewPosition > 0 ? $"#{_outcome.NewPosition}" : "unranked";
-        DrawAwardRow(batch, award, ref y, "Ranking", position, Theme.White);
+        var position = _outcome.NewPosition > 0
+            ? Loc.T("resultScreen.ranked", _outcome.NewPosition)
+            : Loc.T("resultScreen.unranked");
+        DrawAwardRow(batch, award, ref y, Loc.T("resultScreen.ranking"), position, Theme.White);
 
         if (_outcome.Promoted)
         {
-            DrawAwardRow(batch, award, ref y, "Promoted", "NEW LEAGUE", Theme.Gold);
+            DrawAwardRow(batch, award, ref y, Loc.T("resultScreen.promoted"),
+                Loc.T("resultScreen.newLeague"), Theme.Gold);
         }
 
         foreach (var change in _outcome.BeltChanges)
@@ -141,7 +152,9 @@ public sealed class ResultScreen : Screen
         if (State.Player.IsInjured)
         {
             var injury = State.Player.ActiveInjuries.OrderByDescending(i => i.DaysRemaining).First();
-            DrawAwardRow(batch, award, ref y, "Injury", $"{injury.DisplayName} ({injury.DaysRemaining}d)", Theme.RedLight);
+            DrawAwardRow(batch, award, ref y, Loc.T("resultScreen.injury"),
+                Loc.T("resultScreen.injuryValue", injury.DisplayName, injury.DaysRemaining),
+                Theme.RedLight);
         }
 
         if (_beltRevealed && (player.Id == State.Belts.Get(State.PlayerLeagueId, State.PlayerDivision).HolderId))
@@ -158,7 +171,7 @@ public sealed class ResultScreen : Screen
         {
             var cards = new Rectangle(80, 300, 500, 300);
             batch.NineSlice(Context.Assets.Tex("panel"), cards, 40, Color.White);
-            batch.Text(Context.Assets.Font("small"), "JUDGES' SCORECARDS",
+            batch.Text(Context.Assets.Font("small"), Loc.T("resultScreen.scorecards"),
                 new Vector2(cards.Left + 30, cards.Top + 24), Theme.Gold);
 
             var cy = cards.Top + 70;
@@ -174,23 +187,26 @@ public sealed class ResultScreen : Screen
         // Fouls and knockdowns.
         var facts = new Rectangle(80, 630, 500, 260);
         batch.NineSlice(Context.Assets.Tex("panel"), facts, 40, Color.White);
-        batch.Text(Context.Assets.Font("small"), "FIGHT FACTS",
+        batch.Text(Context.Assets.Font("small"), Loc.T("resultScreen.facts"),
             new Vector2(facts.Left + 30, facts.Top + 24), Theme.Gold);
 
         var fy = facts.Top + 70;
-        batch.Text(Context.Assets.Font("small"), "Knockdowns", new Vector2(facts.Left + 30, fy), Theme.Muted);
+        batch.Text(Context.Assets.Font("small"), Loc.T("resultScreen.knockdowns"),
+            new Vector2(facts.Left + 30, fy), Theme.Muted);
         batch.Text(Context.Assets.Font("small"), $"{result.FighterAKnockdowns} - {result.FighterBKnockdowns}",
             new Vector2(facts.Right - 30, fy), Theme.White, 1f, TextAlign.Right);
         fy += 40;
-        batch.Text(Context.Assets.Font("small"), "Fouls", new Vector2(facts.Left + 30, fy), Theme.Muted);
+        batch.Text(Context.Assets.Font("small"), Loc.T("resultScreen.fouls"),
+            new Vector2(facts.Left + 30, fy), Theme.Muted);
         batch.Text(Context.Assets.Font("small"), $"{result.FighterAFouls} - {result.FighterBFouls}",
             new Vector2(facts.Right - 30, fy), Theme.White, 1f, TextAlign.Right);
         fy += 40;
-        batch.Text(Context.Assets.Font("small"), "Damage dealt", new Vector2(facts.Left + 30, fy), Theme.Muted);
+        batch.Text(Context.Assets.Font("small"), Loc.T("resultScreen.damage"),
+            new Vector2(facts.Left + 30, fy), Theme.Muted);
         batch.Text(Context.Assets.Font("small"), $"{result.TotalDamageA} - {result.TotalDamageB}",
             new Vector2(facts.Right - 30, fy), Theme.White, 1f, TextAlign.Right);
 
-        foreach (var button in _buttons.ToArray())
+        foreach (var button in Buttons.ToArray())
         {
             button.Draw(batch, Context.Assets);
         }

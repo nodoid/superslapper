@@ -2,9 +2,11 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Input.Touch;
+using SuperSlapper.Core.Localisation;
 using SuperSlapper.Game.Core;
 using Button = SuperSlapper.Game.Core.Button;
 using SuperSlapper.Game.Screens;
+using XnaGame = Microsoft.Xna.Framework.Game;
 
 namespace SuperSlapper.Game;
 
@@ -12,7 +14,7 @@ namespace SuperSlapper.Game;
 /// The shared game. Every platform head boots this class; the only difference
 /// between them is the graphics backend packaged by the platform project.
 /// </summary>
-public class SuperSlapperGame : Microsoft.Xna.Framework.Game
+public class SuperSlapperGame : XnaGame
 {
     private readonly GraphicsDeviceManager _graphics;
     private SpriteBatch _batch = null!;
@@ -21,19 +23,54 @@ public class SuperSlapperGame : Microsoft.Xna.Framework.Game
     private TextInputState _textInput = null!;
     private Matrix _virtualToScreen = Matrix.Identity;
     private Matrix _screenToVirtual = Matrix.Identity;
+    private string _reportedView = string.Empty;
     private InputState _input = null!;
     private SelfTestRunner? _selfTest;
     private RenderTarget2D? _selfTestTarget;
+    private DemoDirector? _demo;
 
     /// <summary>Optional self-test: renders every screen to disk and quits.</summary>
     public string? SelfTestOutputDirectory { get; set; }
 
     public int SelfTestFrames { get; set; } = 3;
 
+    /// <summary>
+    /// Raised once the game has loaded and its platform window and view exist. The
+    /// iOS scene re-homes the view into itself on this, because the scene can
+    /// connect before MonoGame has made one.
+    /// </summary>
+    public event Action? Ready;
+
     /// <summary>Runs the automated career playthrough and quits with an exit code.</summary>
     public bool PlaythroughMode { get; set; }
 
+    /// <summary>Runs the automated season and quits with an exit code.</summary>
+    public bool SeasonMode { get; set; }
+
+    /// <summary>
+    /// Plays a scripted career in real time so the running app can be filmed. The
+    /// demo never quits on its own: iOS forbids that, and the capture is stopped
+    /// from outside.
+    /// </summary>
+    public bool DemoMode { get; set; }
+
+    /// <summary>Where the demo writes one PNG per beat, when the run is being checked.</summary>
+    public string? DemoCaptureDirectory { get; set; }
+
+    /// <summary>Where the demo writes its beat log, for the recorder following the run.</summary>
+    public string? DemoLogFile { get; set; }
+
+    /// <summary>
+    /// Where the head wants a running trace of the session: screen changes, presses
+    /// and failures. The iOS head points it at a file, because a phone leaves no
+    /// console behind to read after the fact.
+    /// </summary>
+    public Action<string>? Trace { get; set; }
+
     private bool _playthroughDone;
+    private long _frames;
+    private string? _debugShotPath;
+    private bool _debugShotTaken;
 
     public SuperSlapperGame()
     {
@@ -68,13 +105,38 @@ public class SuperSlapperGame : Microsoft.Xna.Framework.Game
         _assets = new Assets(GraphicsDevice);
         _assets.LoadAll();
 
-        _context = new GameContext(_assets, GraphicsDevice)
+        // An automated run gets its own save folder, cleared first: a scripted
+        // career can never touch the player's save, and the title screen looks the
+        // same on every machine instead of depending on what is already on disk.
+        var automated = SelfTestOutputDirectory is not null || PlaythroughMode || SeasonMode || DemoMode;
+        var saveDirectory = automated
+            ? Path.Combine(Path.GetTempPath(), "SuperSlapper-automated")
+            : null;
+
+        if (saveDirectory is not null && Directory.Exists(saveDirectory))
         {
-            PersistEnabled = SelfTestOutputDirectory is null && !PlaythroughMode
+            try
+            {
+                Directory.Delete(saveDirectory, true);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[save] could not clear {saveDirectory}: {ex.Message}");
+            }
+        }
+
+        _context = new GameContext(_assets, GraphicsDevice, saveDirectory)
+        {
+            PersistEnabled = !automated
         };
         _textInput = new TextInputState(Window);
         _input = new InputState();
         _context.Screens = new ScreenManager(_context);
+
+        _context.Trace = Trace;
+        Button.Trace = Trace;
+        InputState.Trace = Trace;
+        Trace?.Invoke($"start: assets {_assets.LoadedTextureCount} textures, save {_context.SavePath}");
 
         foreach (var error in _assets.Errors)
         {
@@ -86,10 +148,44 @@ public class SuperSlapperGame : Microsoft.Xna.Framework.Game
 
         _context.Screens.SetRoot(new TitleScreen(_context));
 
+        // A diagnostic hand: a launch can be pointed straight at one page and asked
+        // to photograph it, so a page that will not draw can be looked at on the
+        // phone without walking to it by thumb.
+        var debugScreen = Environment.GetEnvironmentVariable("SUPERSLAPPER_SCREEN");
+        if (!string.IsNullOrWhiteSpace(debugScreen))
+        {
+            _context.State = _context.Repository.Exists() ? _context.Repository.Load() : null;
+            if (_context.State is not null)
+            {
+                _debugShotPath = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                    "shot_" + debugScreen + ".png");
+
+                Screen root = debugScreen switch
+                {
+                    "belts" => new RecordsScreen(_context, RecordsScreen.Tab.Belts),
+                    "records" => new RecordsScreen(_context, RecordsScreen.Tab.Rankings),
+                    "settings" => new SettingsScreen(_context),
+                    _ => new RecordsScreen(_context, RecordsScreen.Tab.Rules)
+                };
+                _context.Screens.SetRoot(root);
+                Trace?.Invoke($"debug screen {debugScreen}");
+            }
+        }
+
         if (SelfTestOutputDirectory is not null)
         {
             _selfTest = new SelfTestRunner(SelfTestOutputDirectory, _assets);
         }
+
+        if (DemoMode)
+        {
+            _demo = new DemoDirector(_context, DemoCaptureDirectory, DemoLogFile);
+        }
+
+        // The game is up: its window and view exist now. The iOS scene waits for
+        // this when it connected before MonoGame had built them.
+        Ready?.Invoke();
     }
 
     private void UpdateVirtualTransform()
@@ -105,14 +201,26 @@ public class SuperSlapperGame : Microsoft.Xna.Framework.Game
         _virtualToScreen = Matrix.CreateScale(scale, scale, 1f) *
                            Matrix.CreateTranslation(offsetX, offsetY, 0f);
         _screenToVirtual = Matrix.Invert(_virtualToScreen);
+
+        // The frame is only worth reporting when the view actually changes size;
+        // it is what says whether touches and drawing agree about the screen. The
+        // touch panel's own size belongs in the same line: a tap is reported in that
+        // space, and the two only agree once the panel has been scaled to the frame.
+        var view = $"{width}x{height} scale {scale:0.####} offset {offsetX:0.#},{offsetY:0.#} " +
+                   $"touch panel {TouchPanel.DisplayWidth}x{TouchPanel.DisplayHeight}";
+        if (view != _reportedView)
+        {
+            _reportedView = view;
+            Trace?.Invoke($"view back buffer {view}");
+        }
     }
 
     protected override void Update(GameTime gameTime)
     {
-        if (PlaythroughMode && !_playthroughDone)
+        if ((PlaythroughMode || SeasonMode) && !_playthroughDone)
         {
             _playthroughDone = true;
-            var code = Playthrough.Run(_context, 3);
+            var code = SeasonMode ? Playthrough.RunSeason(_context) : Playthrough.Run(_context, 3);
             Environment.ExitCode = code;
             Quit();
             return;
@@ -125,8 +233,14 @@ public class SuperSlapperGame : Microsoft.Xna.Framework.Game
         var keyboard = Keyboard.GetState();
         var touches = TouchPanel.GetState();
 
-        _input.Update(mouse, keyboard, touches, _screenToVirtual);
+        _input.Update(mouse, keyboard, touches, _screenToVirtual,
+            new Point(GraphicsDevice.PresentationParameters.BackBufferWidth,
+                GraphicsDevice.PresentationParameters.BackBufferHeight));
         _textInput.SetCursor(_input.Pointer);
+
+        // The demo takes the frame's input: what it delivers is what the screens
+        // see, whether or not anyone is touching the device being filmed.
+        _demo?.Update(gameTime, _input);
 
         if (_input.BackPressed && _context.Screens.Current is not TitleScreen)
         {
@@ -135,6 +249,16 @@ public class SuperSlapperGame : Microsoft.Xna.Framework.Game
 
         _context.Screens.Update(gameTime, _input);
         _selfTest?.Prepare(_context);
+
+        // One line a second while the game is running. A phone that stops
+        // answering taps is either a loop that has stopped or a screen that has
+        // stopped listening, and this says which.
+        if (++_frames % 60 == 0)
+        {
+            Trace?.Invoke($"beat {_frames} {_context.Screens.Current?.GetType().Name} " +
+                          $"depth {_context.Screens.Depth}");
+        }
+
         base.Update(gameTime);
     }
 
@@ -142,9 +266,34 @@ public class SuperSlapperGame : Microsoft.Xna.Framework.Game
     {
         DrawScenes(gameTime);
 
+        if (_debugShotPath is { } shotPath && !_debugShotTaken && _frames > 120)
+        {
+            _debugShotTaken = true;
+            try
+            {
+                CaptureFrame(gameTime, shotPath);
+                Console.WriteLine($"[shot] {shotPath}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[shot] failed: {ex}");
+            }
+        }
+
         if (_selfTest is { NeedsRender: true })
         {
-            CaptureFrame(gameTime);
+            CaptureFrame(gameTime, _selfTest.PathFor(_selfTest.CurrentName));
+            _selfTest.Captured();
+
+            if (_selfTest.Finished)
+            {
+                FinishSelfTest();
+            }
+        }
+        else if (_demo is { WantsCapture: true, CaptureName: { } name } demo)
+        {
+            CaptureFrame(gameTime, Path.Combine(demo.CaptureDirectory!, name + ".png"));
+            demo.Captured();
         }
 
         base.Draw(gameTime);
@@ -168,8 +317,8 @@ public class SuperSlapperGame : Microsoft.Xna.Framework.Game
         _batch.End();
     }
 
-    /// <summary>Renders the current screen into a PNG for the automated smoke test.</summary>
-    private void CaptureFrame(GameTime gameTime)
+    /// <summary>Renders the current screen into a PNG, for the smoke test or the demo.</summary>
+    private void CaptureFrame(GameTime gameTime, string path)
     {
         _selfTestTarget ??= new RenderTarget2D(GraphicsDevice, GameSettings.VirtualWidth,
             GameSettings.VirtualHeight, false, SurfaceFormat.Color, DepthFormat.None);
@@ -178,22 +327,46 @@ public class SuperSlapperGame : Microsoft.Xna.Framework.Game
         DrawScenes(gameTime, Matrix.Identity);
         GraphicsDevice.SetRenderTarget(null);
 
-        var path = _selfTest!.PathFor(_selfTest.CurrentName);
         using (var stream = File.Create(path))
         {
             _selfTestTarget.SaveAsPng(stream, GameSettings.VirtualWidth, GameSettings.VirtualHeight);
         }
 
-        Console.WriteLine($"[selftest] captured {path}");
-        _selfTest.Captured();
+        Console.WriteLine($"[frame] captured {path}");
+    }
 
-        if (_selfTest.Finished)
+    /// <summary>Ends the run once the last scenario is written.</summary>
+    private void FinishSelfTest()
+    {
+        _selfTestTarget?.Dispose();
+        _selfTestTarget = null;
+
+        // The smoke test is only worth running if it can fail the build.
+        // Every string the run asked for had to come out of the catalogue: a key
+        // that resolved to itself is a missing translation, and a missing one is a
+        // failure like any other.
+        Console.WriteLine($"[strings] {Loc.Count} in {Loc.Language}" +
+                          (Loc.Missing.Count == 0
+                              ? ", none missing"
+                              : $", {Loc.Missing.Count} missing: {string.Join(", ", Loc.Missing.Take(6))}"));
+
+        if (Loc.Missing.Count > 0)
         {
-            _selfTestTarget.Dispose();
-            _selfTestTarget = null;
-            Console.WriteLine("[selftest] complete");
-            Quit();
+            _selfTest.FailMissingStrings(Loc.Missing);
         }
+
+        if (_selfTest!.FailureCount == 0)
+        {
+            Console.WriteLine("[selftest] complete");
+        }
+        else
+        {
+            Console.WriteLine("[selftest] FAILED - " + _selfTest.FailureCount +
+                              " scenario(s) did not land where they were aimed");
+        }
+
+        Environment.ExitCode = _selfTest.FailureCount == 0 ? 0 : 1;
+        Quit();
     }
 
     /// <summary>Leaves the game where the platform allows it. iOS does not.</summary>

@@ -1,3 +1,4 @@
+using SuperSlapper.Core.Localisation;
 using SuperSlapper.Core.Units;
 
 namespace SuperSlapper.Core.Rules;
@@ -23,13 +24,31 @@ public enum WeightClassId
 /// </summary>
 public sealed record WeightClass(
     WeightClassId Id,
-    string Name,
     string ShortName,
-    Weight? Limit,
-    string Blurb)
+    Weight? Limit)
 {
+    /// <summary>The division as the player reads it, in the chosen language.</summary>
+    public string Name => Loc.T($"division.{Key}");
+
+    /// <summary>One line on what the division is about.</summary>
+    public string Blurb => Loc.T($"division.{Key}.blurb");
+
     /// <summary>True when the division has no upper weight limit.</summary>
     public bool IsOpen => Limit is null;
+
+    /// <summary>The catalogue key for this division's name and blurb.</summary>
+    private string Key => Id switch
+    {
+        WeightClassId.Flyweight => "flyweight",
+        WeightClassId.Bantamweight => "bantamweight",
+        WeightClassId.Featherweight => "featherweight",
+        WeightClassId.Lightweight => "lightweight",
+        WeightClassId.Welterweight => "welterweight",
+        WeightClassId.Middleweight => "middleweight",
+        WeightClassId.LightHeavyweight => "lightHeavyweight",
+        WeightClassId.Heavyweight => "heavyweight",
+        _ => "superHeavyweight"
+    };
 
     /// <summary>Published metric limit, e.g. "56.7 kg" — "No limit" for Super Heavyweight.</summary>
     public string MetricLimitText => Limit is null
@@ -49,24 +68,15 @@ public static class WeightClasses
     /// <summary>Ordered lightest first.</summary>
     public static IReadOnlyList<WeightClass> All { get; } = new[]
     {
-        new WeightClass(WeightClassId.Flyweight, "Flyweight", "FLY",
-            Weight.FromPounds(125m), "The smallest division. Speed and chin decide everything."),
-        new WeightClass(WeightClassId.Bantamweight, "Bantamweight", "BAN",
-            Weight.FromPounds(135m), "Fast hands and short, brutal exchanges."),
-        new WeightClass(WeightClassId.Featherweight, "Featherweight", "FEA",
-            Weight.FromPounds(145m), "Sharp technique meets real power."),
-        new WeightClass(WeightClassId.Lightweight, "Lightweight", "LIG",
-            Weight.FromPounds(155m), "The deepest talent pool in the sport."),
-        new WeightClass(WeightClassId.Welterweight, "Welterweight", "WEL",
-            Weight.FromPounds(170m), "Where knockout artists are made."),
-        new WeightClass(WeightClassId.Middleweight, "Middleweight", "MID",
-            Weight.FromPounds(185m), "Big frames, bigger slaps."),
-        new WeightClass(WeightClassId.LightHeavyweight, "Light Heavyweight", "LHW",
-            Weight.FromPounds(205m), "Bone-rattling power, no margin for error."),
-        new WeightClass(WeightClassId.Heavyweight, "Heavyweight", "HEA",
-            Weight.FromPounds(265m), "The glamour division. One slap ends careers."),
-        new WeightClass(WeightClassId.SuperHeavyweight, "Super Heavyweight", "SHW",
-            null, "No limit. Giants only.")
+        new WeightClass(WeightClassId.Flyweight, "FLY", Weight.FromPounds(125m)),
+        new WeightClass(WeightClassId.Bantamweight, "BAN", Weight.FromPounds(135m)),
+        new WeightClass(WeightClassId.Featherweight, "FEA", Weight.FromPounds(145m)),
+        new WeightClass(WeightClassId.Lightweight, "LIG", Weight.FromPounds(155m)),
+        new WeightClass(WeightClassId.Welterweight, "WEL", Weight.FromPounds(170m)),
+        new WeightClass(WeightClassId.Middleweight, "MID", Weight.FromPounds(185m)),
+        new WeightClass(WeightClassId.LightHeavyweight, "LHW", Weight.FromPounds(205m)),
+        new WeightClass(WeightClassId.Heavyweight, "HEA", Weight.FromPounds(265m)),
+        new WeightClass(WeightClassId.SuperHeavyweight, "SHW", null)
     };
 
     public static WeightClass Get(WeightClassId id) => All[(int)id];

@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using SuperSlapper.Core.Career;
 using SuperSlapper.Core.Leagues;
+using SuperSlapper.Core.Localisation;
 using SuperSlapper.Core.Rules;
 using SuperSlapper.Game.Core;
 using Button = SuperSlapper.Game.Core.Button;
@@ -15,7 +16,6 @@ namespace SuperSlapper.Game.Screens;
 public sealed class TournamentScreen : Screen
 {
     private readonly TournamentCard _card;
-    private readonly List<Button> _buttons = new();
 
     public TournamentScreen(GameContext context, TournamentCard card) : base(context)
     {
@@ -42,25 +42,31 @@ public sealed class TournamentScreen : Screen
 
     private void Build()
     {
-        _buttons.Clear();
+        ClearControls();
 
-        _buttons.Add(new Button(new Rectangle(80, 890, 320, 120), "BACK",
+        // With no career the card has no career to sit in; the stand-in panel draws.
+        if (Context.State is null)
+        {
+            return;
+        }
+
+        Add(new Button(new Rectangle(80, 890, 320, 120), Loc.T("common.back"),
             () => Context.Screens.Pop(), ButtonStyle.Ghost));
 
         // Straight from the card to the month it sits in, so a night's results
         // can be read against the rest of the calendar.
-        _buttons.Add(new Button(new Rectangle(460, 890, 320, 120), "CALENDAR",
+        Add(new Button(new Rectangle(460, 890, 320, 120), Loc.T("hub.calendar"),
             () => Context.Screens.Push(new CalendarScreen(Context)), ButtonStyle.Ghost));
 
         if (HasBoutsToRun)
         {
-            _buttons.Add(new Button(new Rectangle(1180, 890, 400, 120), "RUN THE OTHER BOUTS",
+            Add(new Button(new Rectangle(1180, 890, 400, 120), Loc.T("card.runRest"),
                 RunRest, ButtonStyle.Ghost));
         }
 
         if (PlayerBoutIsDue)
         {
-            _buttons.Add(new Button(new Rectangle(1600, 890, 260, 120), "WEIGH IN",
+            Add(new Button(new Rectangle(1600, 890, 260, 120), Loc.T("hub.weighIn"),
                 () => Context.Screens.Push(new WeighInScreen(Context)), ButtonStyle.Danger)
             {
                 IconKey = "icon_hand"
@@ -83,7 +89,7 @@ public sealed class TournamentScreen : Screen
             return;
         }
 
-        foreach (var button in _buttons.ToArray())
+        foreach (var button in Buttons.ToArray())
         {
             button.Update(time, input, () => Context.Assets.Play("ui_click", 0.4f));
         }
@@ -109,20 +115,22 @@ public sealed class TournamentScreen : Screen
             GameSettings.VirtualHeight), Color.White);
 
         batch.Fill(new Rectangle(0, 0, GameSettings.VirtualWidth, 150), new Color(8, 12, 22) * 0.9f);
-        batch.Text(Context.Assets.Font("large"), $"{league.ShortName} · {division.Name.ToUpperInvariant()}",
+        batch.Text(Context.Assets.Font("large"),
+            Loc.T("card.header", league.ShortName, division.Name.ToUpperInvariant()),
             new Vector2(80, 40), Theme.Gold);
-        batch.Text(Context.Assets.Font("body"), $"{Date:dddd d MMMM yyyy} · {_card.Venue}",
+        batch.Text(Context.Assets.Font("body"),
+            Loc.T("card.dateLine", Date.ToString("dddd d MMMM yyyy"), _card.Venue),
             new Vector2(82, 100), Theme.Muted);
 
         var days = _card.Day - State.Day;
-        var when = _card.IsComplete ? "CARD COMPLETE"
-            : days > 0 ? $"FIGHT NIGHT IN {days} DAY{(days == 1 ? "" : "S")}"
-            : "FIGHT NIGHT";
+        var when = _card.IsComplete ? Loc.T("card.complete")
+            : days > 0 ? Loc.T(days == 1 ? "card.nightInOne" : "card.nightInMany", days)
+            : Loc.T("card.fightNight");
 
         batch.Text(Context.Assets.Font("medium"), when, new Vector2(1840, 46),
             _card.IsComplete ? Theme.Green : Theme.Gold, 1f, TextAlign.Right);
         batch.Text(Context.Assets.Font("small"),
-            $"{_card.Bouts.Count(b => b.IsDecided)} of {_card.Bouts.Count} bouts fought",
+            Loc.T("card.progress", _card.Bouts.Count(b => b.IsDecided), _card.Bouts.Count),
             new Vector2(1840, 100), Theme.Muted, 1f, TextAlign.Right);
 
         for (var i = 0; i < _card.Bouts.Count; i++)
@@ -130,7 +138,7 @@ public sealed class TournamentScreen : Screen
             DrawBout(batch, _card.Bouts[i], new Rectangle(80, 180 + i * 134, 1760, 122));
         }
 
-        foreach (var button in _buttons.ToArray())
+        foreach (var button in Buttons.ToArray())
         {
             button.Draw(batch, Context.Assets);
         }
@@ -149,16 +157,17 @@ public sealed class TournamentScreen : Screen
         {
             var badge = new Rectangle(rect.Left + 200, rect.Top + 16, 190, 30);
             batch.Fill(badge, Theme.Gold);
-            batch.Text(Context.Assets.Font("tiny"), "CHAMPIONSHIP",
+            batch.Text(Context.Assets.Font("tiny"), Loc.T("hub.championship"),
                 new Vector2(badge.Center.X, badge.Top + 7), Theme.Ink, 1f, TextAlign.Centre, shadow: false);
         }
 
-        batch.Text(Context.Assets.Font("medium"), $"{bout.FighterAName}   vs   {bout.FighterBName}",
+        batch.Text(Context.Assets.Font("medium"),
+            Loc.T("card.names", bout.FighterAName, bout.FighterBName),
             new Vector2(rect.Left + 28, rect.Top + 50), played ? Theme.White : Theme.White * 0.9f);
 
         if (bout.IsPlayerBout)
         {
-            batch.Text(Context.Assets.Font("tiny"), "YOUR BOUT",
+            batch.Text(Context.Assets.Font("tiny"), Loc.T("card.yourBout"),
                 new Vector2(rect.Left + 28, rect.Top + 94), Theme.Gold);
         }
 
@@ -176,13 +185,13 @@ public sealed class TournamentScreen : Screen
         else if (bout.IsPlayerBout && PlayerBoutIsDue)
         {
             var pulse = 0.5f + 0.5f * (float)Math.Sin(Elapsed * 3f);
-            batch.Text(Context.Assets.Font("small"), "READY - WEIGH IN THEN FIGHT",
+            batch.Text(Context.Assets.Font("small"), Loc.T("card.ready"),
                 new Vector2(rect.Right - 28, rect.Top + 84), Theme.RedLight * (0.6f + 0.4f * pulse), 1f,
                 TextAlign.Right);
         }
         else
         {
-            batch.Text(Context.Assets.Font("small"), "to be contested",
+            batch.Text(Context.Assets.Font("small"), Loc.T("card.toBeContested"),
                 new Vector2(rect.Right - 28, rect.Top + 84), Theme.Muted, 1f, TextAlign.Right);
         }
     }

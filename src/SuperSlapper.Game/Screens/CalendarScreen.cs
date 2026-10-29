@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using SuperSlapper.Core.Career;
 using SuperSlapper.Core.Leagues;
+using SuperSlapper.Core.Localisation;
 using SuperSlapper.Game.Core;
 using Button = SuperSlapper.Game.Core.Button;
 
@@ -13,14 +14,14 @@ namespace SuperSlapper.Game.Screens;
 /// </summary>
 public sealed class CalendarScreen : Screen
 {
-    private static readonly string[] Weekdays = { "MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN" };
+    private static readonly string[] WeekdayKeys =
+        { "weekday.mon", "weekday.tue", "weekday.wed", "weekday.thu", "weekday.fri", "weekday.sat", "weekday.sun" };
 
     private const int GridLeft = 80;
     private const int GridTop = 190;
     private const int CellWidth = 157;
     private const int CellHeight = 112;
 
-    private readonly List<Button> _buttons = new();
     private readonly List<(Rectangle Rect, int Day)> _cells = new();
     private DateTime _month;
     private string _note = string.Empty;
@@ -31,9 +32,18 @@ public sealed class CalendarScreen : Screen
 
     private CareerState State => Context.State!;
 
+    /// <summary>The month on screen and the note under the grid, for the button sweep.</summary>
+    public override string ViewState => $"{_month:yyyy-MM}|{_note}";
+
     public override void OnEnter()
     {
         base.OnEnter();
+
+        // With no career there is no month to open on; the stand-in panel draws.
+        if (Context.State is null)
+        {
+            return;
+        }
 
         var today = CareerCalendar.DateOf(State.Day);
         _month = new DateTime(today.Year, today.Month, 1);
@@ -58,18 +68,19 @@ public sealed class CalendarScreen : Screen
 
     private void Build()
     {
-        _buttons.Clear();
+        ClearControls();
 
-        _buttons.Add(new Button(new Rectangle(1000, 42, 84, 72), "<", () => Shift(-1), ButtonStyle.Ghost));
-        _buttons.Add(new Button(new Rectangle(1100, 42, 84, 72), ">", () => Shift(1), ButtonStyle.Ghost));
-        _buttons.Add(new Button(new Rectangle(80, 890, 260, 120), "TODAY", GoToToday, ButtonStyle.Ghost));
-        _buttons.Add(new Button(new Rectangle(1620, 890, 240, 120), "BACK",
+        Add(new Button(new Rectangle(1000, 42, 84, 72), "<", () => Shift(-1), ButtonStyle.Ghost));
+        Add(new Button(new Rectangle(1100, 42, 84, 72), ">", () => Shift(1), ButtonStyle.Ghost));
+        Add(new Button(new Rectangle(80, 890, 260, 120), Loc.T("calendar.today"), GoToToday,
+            ButtonStyle.Ghost));
+        Add(new Button(new Rectangle(1620, 890, 240, 120), Loc.T("common.back"),
             () => Context.Screens.Pop(), ButtonStyle.Ghost));
 
         var card = PlayerCardInMonth();
         if (card is not null)
         {
-            _buttons.Add(new Button(new Rectangle(1180, 890, 400, 120), "OPEN THE CARD",
+            Add(new Button(new Rectangle(1180, 890, 400, 120), Loc.T("calendar.openCard"),
                 () => Context.Screens.Push(new TournamentScreen(Context, card)), ButtonStyle.Normal));
         }
 
@@ -89,7 +100,29 @@ public sealed class CalendarScreen : Screen
             var rect = new Rectangle(GridLeft + (cell % 7) * CellWidth,
                 GridTop + (cell / 7) * CellHeight, CellWidth - 6, CellHeight - 6);
             _cells.Add((rect, day));
+
+            // Declared from the same rectangle the screen hit-tests, so a cell can
+            // never be drawn, tappable and untested at the same time.
+            AddTarget($"day {day}", rect);
         }
+    }
+
+    /// <summary>
+    /// True when a day has something on it: the player's card, which the cell opens,
+    /// or a league staging a card that night, which the cell names. The tap handler in
+    /// <see cref="Update"/> tests these same two things, and the automated button sweep
+    /// asks this so it neither demands a note from an empty day nor lets an
+    /// empty-day assumption hide a cell that has stopped answering.
+    /// </summary>
+    public bool DayIsLive(int day)
+    {
+        var card = PlayerCardInMonth();
+        if (card is not null && CareerCalendar.DateOf(card.Day).Day == day)
+        {
+            return true;
+        }
+
+        return CardNights().Any(night => night.League is not null && night.Day == day);
     }
 
     /// <summary>The player's card, if one lands in the month on screen.</summary>
@@ -136,7 +169,7 @@ public sealed class CalendarScreen : Screen
         var card = PlayerCardInMonth();
         if (card is not null)
         {
-            return (CareerCalendar.DateOf(card.Day).Day, "YOUR CARD");
+            return (CareerCalendar.DateOf(card.Day).Day, Loc.T("calendar.yourCard"));
         }
 
         var offer = State.Offer;
@@ -147,7 +180,7 @@ public sealed class CalendarScreen : Screen
 
         var date = CareerCalendar.DateOf(offer.FightDay);
         return date.Year == _month.Year && date.Month == _month.Month
-            ? (date.Day, "YOUR BOUT")
+            ? (date.Day, Loc.T("calendar.yourBout"))
             : null;
     }
 
@@ -158,7 +191,7 @@ public sealed class CalendarScreen : Screen
             return;
         }
 
-        foreach (var button in _buttons.ToArray())
+        foreach (var button in Buttons.ToArray())
         {
             button.Update(time, input, () => Context.Assets.Play("ui_click", 0.4f));
         }
@@ -194,7 +227,7 @@ public sealed class CalendarScreen : Screen
             var night = nights.FirstOrDefault(n => n.Day == day);
             _note = night.League is null
                 ? string.Empty
-                : $"{night.League.ShortName} stages a card on this day. Open it from the hub once you are booked on it.";
+                : Loc.T("calendar.cardNightNote", night.League.ShortName);
         }
     }
 
@@ -213,17 +246,17 @@ public sealed class CalendarScreen : Screen
             GameSettings.VirtualHeight), Color.White);
 
         batch.Fill(new Rectangle(0, 0, GameSettings.VirtualWidth, 130), new Color(8, 12, 22) * 0.9f);
-        batch.Text(Context.Assets.Font("large"), "CALENDAR", new Vector2(80, 26), Theme.Gold);
+        batch.Text(Context.Assets.Font("large"), Loc.T("calendar.title"), new Vector2(80, 26), Theme.Gold);
         batch.Text(Context.Assets.Font("body"),
-            $"{today:dddd d MMMM yyyy} · day {state.Day} of the career",
+            Loc.T("calendar.subtitle", today.ToString("dddd d MMMM yyyy"), state.Day),
             new Vector2(82, 96), Theme.Muted);
 
         batch.Text(Context.Assets.Font("large"), _month.ToString("MMMM yyyy").ToUpperInvariant(),
             new Vector2(1400, 40), Theme.White, 0.9f, TextAlign.Centre);
 
-        for (var i = 0; i < Weekdays.Length; i++)
+        for (var i = 0; i < WeekdayKeys.Length; i++)
         {
-            batch.Text(Context.Assets.Font("small"), Weekdays[i],
+            batch.Text(Context.Assets.Font("small"), Loc.T(WeekdayKeys[i]),
                 new Vector2(GridLeft + i * CellWidth + (CellWidth - 6) / 2f, 156), Theme.Muted, 1f,
                 TextAlign.Centre);
         }
@@ -232,7 +265,7 @@ public sealed class CalendarScreen : Screen
         DrawMonthPanel(batch);
         DrawNote(batch);
 
-        foreach (var button in _buttons.ToArray())
+        foreach (var button in Buttons.ToArray())
         {
             button.Draw(batch, Context.Assets);
         }
@@ -281,8 +314,8 @@ public sealed class CalendarScreen : Screen
     {
         var panel = new Rectangle(1210, 150, 630, 700);
         batch.NineSlice(Context.Assets.Tex("panel"), panel, 40, Color.White);
-        batch.Text(Context.Assets.Font("small"), "CARD NIGHTS", new Vector2(panel.Left + 40, panel.Top + 26),
-            Theme.Gold);
+        batch.Text(Context.Assets.Font("small"), Loc.T("calendar.cardNights"),
+            new Vector2(panel.Left + 40, panel.Top + 26), Theme.Gold);
 
         var y = panel.Top + 80;
         var nights = CardNights();
@@ -292,7 +325,8 @@ public sealed class CalendarScreen : Screen
             batch.Fill(new Rectangle(panel.Left + 36, y + 6, 12, 46), LeagueColour(league.Id));
             batch.Text(Context.Assets.Font("medium"), league.ShortName,
                 new Vector2(panel.Left + 62, y), Theme.White);
-            batch.Text(Context.Assets.Font("small"), $"{date:ddd d MMM} · {league.Region}",
+            batch.Text(Context.Assets.Font("small"),
+                Loc.T("calendar.nightLine", date.ToString("ddd d MMM"), league.DisplayRegion),
                 new Vector2(panel.Left + 62, y + 44), Theme.Muted);
             y += 96;
         }
@@ -306,20 +340,20 @@ public sealed class CalendarScreen : Screen
         if (card is not null)
         {
             var date = CareerCalendar.DateOf(card.Day);
-            batch.Text(Context.Assets.Font("small"), "YOUR CARD", new Vector2(box.Left + 24, box.Top + 20),
-                Theme.Gold);
+            batch.Text(Context.Assets.Font("small"), Loc.T("calendar.yourCard"),
+                new Vector2(box.Left + 24, box.Top + 20), Theme.Gold);
             batch.Text(Context.Assets.Font("medium"), date.ToString("dddd d MMMM"),
                 new Vector2(box.Left + 24, box.Top + 54), Theme.White);
             batch.Text(Context.Assets.Font("body"), card.Venue,
                 new Vector2(box.Left + 24, box.Top + 104), Theme.Muted);
             batch.Text(Context.Assets.Font("small"),
-                $"{Leagues.Get(card.LeagueId).ShortName} · {card.Bouts.Count} bouts · " +
-                $"{card.Bouts.Count(b => b.IsDecided)} decided",
+                Loc.T("calendar.cardLine", Leagues.Get(card.LeagueId).ShortName,
+                    card.Bouts.Count, card.Bouts.Count(b => b.IsDecided)),
                 new Vector2(box.Left + 24, box.Top + 148), Theme.Muted);
         }
         else if (offer is not null)
         {
-            batch.Text(Context.Assets.Font("small"), "YOUR NEXT BOUT",
+            batch.Text(Context.Assets.Font("small"), Loc.T("calendar.yourNextBout"),
                 new Vector2(box.Left + 24, box.Top + 20), Theme.Gold);
             batch.Text(Context.Assets.Font("medium"),
                 CareerCalendar.DateOf(offer.FightDay).ToString("dddd d MMMM"),
@@ -331,7 +365,7 @@ public sealed class CalendarScreen : Screen
         }
         else
         {
-            batch.Text(Context.Assets.Font("body"), "No bout booked.",
+            batch.Text(Context.Assets.Font("body"), Loc.T("weighInScreen.noBout"),
                 new Vector2(box.Left + 24, box.Top + 90), Theme.Muted);
         }
     }

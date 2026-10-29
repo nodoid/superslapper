@@ -1,3 +1,4 @@
+using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using SuperSlapper.Core.Career;
@@ -22,7 +23,7 @@ public sealed class CareerRepository
 
     public CareerRepository(string directory) => _directory = directory;
 
-    public string Directory => _directory;
+    public string DirectoryPath => _directory;
 
     public string SlotPath(string slot) =>
         Path.Combine(_directory, SanitiseSlot(slot) + ".json");
@@ -30,7 +31,7 @@ public sealed class CareerRepository
     /// <summary>Writes the career atomically so a mid-save crash cannot corrupt it.</summary>
     public void Save(CareerState state, string slot = "career")
     {
-        System.IO.Directory.CreateDirectory(_directory);
+        Directory.CreateDirectory(_directory);
         var path = SlotPath(slot);
         var temp = path + ".tmp";
 
@@ -76,12 +77,12 @@ public sealed class CareerRepository
 
     public IReadOnlyList<string> ListSlots()
     {
-        if (!System.IO.Directory.Exists(_directory))
+        if (!Directory.Exists(_directory))
         {
             return Array.Empty<string>();
         }
 
-        return System.IO.Directory
+        return Directory
             .EnumerateFiles(_directory, "*.json")
             .Select(Path.GetFileNameWithoutExtension)
             .Where(n => !string.IsNullOrEmpty(n))
@@ -111,6 +112,14 @@ public sealed class CareerRepository
             .ToArray());
         return string.IsNullOrWhiteSpace(cleaned) ? "career" : cleaned;
     }
+
+    /// <summary>
+    /// A string that changes whenever anything about a career changes. The automated
+    /// button sweep uses it to tell whether a press did anything at all, so it goes
+    /// through the same serialiser as the save: anything worth writing down is worth
+    /// noticing.
+    /// </summary>
+    public static string Fingerprint(CareerState state) => JsonSerializer.Serialize(state, Options);
 
     /// <summary>Round-trips a career in memory; used by tests and the save preview.</summary>
     public static CareerState RoundTrip(CareerState state)

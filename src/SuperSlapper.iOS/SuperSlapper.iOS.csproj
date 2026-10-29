@@ -41,6 +41,9 @@
     <!-- actool only emits icon renditions when it is told which set is the icon. -->
     <ImageAsset Include="Assets.xcassets/**/*.*" />
     <None Include="Entitlements.plist" />
+    <!-- The privacy manifest has to sit at the root of the app bundle, or App
+         Store review cannot find it. -->
+    <BundleResource Include="PrivacyInfo.xcprivacy" />
   </ItemGroup>
 
 </Project>

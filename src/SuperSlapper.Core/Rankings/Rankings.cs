@@ -1,6 +1,7 @@
 using SuperSlapper.Core.Fight;
 using SuperSlapper.Core.Fighters;
 using SuperSlapper.Core.Leagues;
+using SuperSlapper.Core.Localisation;
 using SuperSlapper.Core.Rules;
 
 namespace SuperSlapper.Core.Rankings;
@@ -36,14 +37,16 @@ public sealed class RankingEntry
     };
 
     /// <summary>"#3", "C" for champion, "NR" for unranked.</summary>
-    public string PositionText => Position <= 0 ? "NR" : "#" + Position;
+    public string PositionText => Position <= 0
+        ? Loc.T("ranking.unranked")
+        : Loc.T("ranking.position", Position);
 
     public string MovementText => Movement switch
     {
-        RankMovement.Up => "▲" + (PreviousPosition - Position),
-        RankMovement.Down => "▼" + (Position - PreviousPosition),
-        RankMovement.New => "NEW",
-        _ => "–"
+        RankMovement.Up => Loc.T("ranking.up", PreviousPosition - Position),
+        RankMovement.Down => Loc.T("ranking.down", Position - PreviousPosition),
+        RankMovement.New => Loc.T("ranking.new"),
+        _ => Loc.T("ranking.same")
     };
 }
 

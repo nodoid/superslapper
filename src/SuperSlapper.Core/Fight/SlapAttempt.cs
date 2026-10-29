@@ -1,3 +1,4 @@
+using SuperSlapper.Core.Localisation;
 using SuperSlapper.Core.Rules;
 
 namespace SuperSlapper.Core.Fight;
@@ -53,11 +54,11 @@ public static class FoulKinds
 {
     public static string Display(this FoulKind kind) => kind switch
     {
-        FoulKind.IllegalZone => "Illegal target",
-        FoulKind.ClosedFist => "Closed fist",
-        FoulKind.Flinching => "Flinching",
-        FoulKind.Stepping => "Stepping off the mark",
-        FoulKind.Delay => "Failure to slap in time",
+        FoulKind.IllegalZone => Loc.T("foul.illegalTarget"),
+        FoulKind.ClosedFist => Loc.T("foul.closedFist"),
+        FoulKind.Flinching => Loc.T("foul.flinching"),
+        FoulKind.Stepping => Loc.T("foul.stepping"),
+        FoulKind.Delay => Loc.T("foul.delay"),
         _ => kind.ToString()
     };
 }
@@ -72,7 +73,7 @@ public sealed class FoulCall
     public bool PointDeduction { get; set; }
     public bool Disqualified { get; set; }
 
-    public string DisplayText => $"{Kind.Display()}: {Description}";
+    public string DisplayText => Loc.T("foul.display", Kind.Display(), Description);
 }
 
 public enum SlapVerdict
@@ -170,8 +171,8 @@ public sealed class FightResult
     public bool WonBy(string fighterId) => !IsDraw && WinnerId == fighterId;
 
     public string Summary => IsDraw
-        ? $"Draw after {EndRound} round{(EndRound == 1 ? "" : "s")}"
-        : $"{Kind.Display()} in round {EndRound}";
+        ? Loc.T(EndRound == 1 ? "result.drawAfterOne" : "result.drawAfterMany", EndRound)
+        : Loc.T("result.summary", Kind.Display(), EndRound);
 
     public string ScorecardText => Scorecards.Count == 0
         ? string.Empty

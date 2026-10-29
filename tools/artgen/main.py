@@ -8,7 +8,7 @@ Run from the repository root:
 Assets are written to ./Content so each platform head can pick them up:
   Content/art/*.png      sprites, backgrounds, ui
   Content/font/*.png|json bitmap fonts
-  Content/audio/*.wav     slaps, crowd, bell, applause
+  Content/audio/*.wav     slaps, crowd, bell, applause, music
 Platform icons go to the individual head projects.
 """
 from __future__ import annotations
@@ -26,6 +26,7 @@ import photoreal  # noqa: E402
 import softfighters  # noqa: E402
 import fonts  # noqa: E402
 import icons  # noqa: E402
+import music  # noqa: E402
 import sfx  # noqa: E402
 import ui  # noqa: E402
 
@@ -64,6 +65,9 @@ def main() -> int:
 
     print("• sound effects")
     sfx.build_all(AUDIO)
+
+    print("• background music")
+    music.build_all(AUDIO)
 
     print("• application icons")
     icons.build_all(

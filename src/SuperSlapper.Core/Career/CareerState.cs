@@ -1,5 +1,6 @@
 using SuperSlapper.Core.Fight;
 using SuperSlapper.Core.Fighters;
+using SuperSlapper.Core.Localisation;
 using SuperSlapper.Core.Rankings;
 using SuperSlapper.Core.Rules;
 using SuperSlapper.Core.Titles;
@@ -29,8 +30,8 @@ public sealed class FightOffer
     public int DaysUntilFight(int currentDay) => FightDay - currentDay;
 
     public string Billing => TitleFight
-        ? $"CHAMPIONSHIP · {Rounds} rounds"
-        : $"{Rounds} rounds · {(IsMainEvent ? "Main event" : "Undercard")}";
+        ? Loc.T("offer.championshipBilling", Rounds)
+        : Loc.T("offer.billing", Rounds, Loc.T(IsMainEvent ? "offer.mainEvent" : "offer.undercard"));
 }
 
 public sealed class TrainingLogEntry

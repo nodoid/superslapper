@@ -1,3 +1,4 @@
+using SuperSlapper.Core.Localisation;
 using SuperSlapper.Core.Rules;
 
 namespace SuperSlapper.Core.Titles;
@@ -28,9 +29,10 @@ public sealed class TitleReign
 
     public int LengthDays(int currentDay) => (LostDay < 0 ? currentDay : LostDay) - WonDay;
 
-    public string Display => IsActive
-        ? $"{FighterName} (current, {Defences} defence{(Defences == 1 ? "" : "s")})"
-        : $"{FighterName} ({Defences} defence{(Defences == 1 ? "" : "s")})";
+    public string Display => Loc.T(IsActive
+            ? Defences == 1 ? "belt.reign.current.one" : "belt.reign.current.many"
+            : Defences == 1 ? "belt.reign.past.one" : "belt.reign.past.many",
+        FighterName, Defences);
 }
 
 /// <summary>
@@ -97,12 +99,12 @@ public sealed class Belt
         current.Vacated = vacated;
     }
 
-    public string DisplayName => Kind switch
+    public string DisplayName => Loc.T(Kind switch
     {
-        BeltKind.World => $"{Leagues.Leagues.Get(LeagueId).ShortName} {GetDivisionName()} World Championship",
-        BeltKind.Interim => $"{Leagues.Leagues.Get(LeagueId).ShortName} Interim {GetDivisionName()} Championship",
-        _ => $"{Leagues.Leagues.Get(LeagueId).ShortName} {GetDivisionName()} Continental Championship"
-    };
+        BeltKind.World => "belt.name.world",
+        BeltKind.Interim => "belt.name.interim",
+        _ => "belt.name.continental"
+    }, Leagues.Leagues.Get(LeagueId).ShortName, GetDivisionName());
 
     private string GetDivisionName() => WeightClasses.Get(Division).Name;
 }

@@ -1,3 +1,5 @@
+using SuperSlapper.Core.Localisation;
+
 namespace SuperSlapper.Core.Rules;
 
 /// <summary>
@@ -10,6 +12,9 @@ public sealed class Ruleset
     public string Id { get; set; } = "standard";
 
     public string Name { get; set; } = "Standard Slap Rules";
+
+    /// <summary>The rulebook's name as the player reads it, looked up by its id.</summary>
+    public string DisplayName => Loc.T($"ruleset.{Id}");
 
     /// <summary>Scored rounds, 1-5.</summary>
     public int Rounds { get; set; } = 3;

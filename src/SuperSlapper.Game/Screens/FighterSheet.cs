@@ -38,10 +38,11 @@ public static class FighterSheet
     /// <summary>Two-frame idle cycle.</summary>
     public static int Idle(float seconds) => ((int)(seconds * 2.4f) % 2) == 0 ? IdleA : IdleB;
 
+    /// <param name="tilt">Rotation at the feet: the lean of a wind-up, or a fall.</param>
     public static void Draw(SpriteBatch batch, Texture2D sheet, int frame, Vector2 position,
-        float scale, bool flipped, Color tint)
+        float scale, bool flipped, Color tint, float tilt = 0f)
     {
         Gfx.Frame(batch, sheet, FrameWidth, FrameHeight, frame, position, tint, scale,
-            flipped ? SpriteEffects.FlipHorizontally : SpriteEffects.None);
+            flipped ? SpriteEffects.FlipHorizontally : SpriteEffects.None, tilt);
     }
 }

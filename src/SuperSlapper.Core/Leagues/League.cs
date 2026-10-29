@@ -1,3 +1,4 @@
+using SuperSlapper.Core.Localisation;
 using SuperSlapper.Core.Rules;
 
 namespace SuperSlapper.Core.Leagues;
@@ -13,6 +14,12 @@ public sealed class League
     public string ShortName { get; set; } = "WSL";
     public string Region { get; set; } = "Worldwide";
     public string RulesetId { get; set; } = "wsl-world";
+
+    /// <summary>The league's name as the player reads it, looked up by its id.</summary>
+    public string DisplayName => Loc.T($"league.{Id}.name");
+
+    /// <summary>Where the league runs, as the player reads it.</summary>
+    public string DisplayRegion => Loc.T($"league.{Id}.region");
 
     /// <summary>Prestige 1 (regional) to 5 (world). Gates the purse and the ranking points.</summary>
     public int Prestige { get; set; } = 3;

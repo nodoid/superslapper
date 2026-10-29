@@ -1,4 +1,5 @@
 using SuperSlapper.Core.Fighters;
+using SuperSlapper.Core.Localisation;
 using SuperSlapper.Core.Rules;
 using SuperSlapper.Core.Units;
 
@@ -40,14 +41,18 @@ public sealed class WeighInResult
     };
 
     public string VerdictText => IsUnlimited
-        ? "No limit"
-        : MadeWeight ? "Made weight" : $"Missed weight by {Weight.FromPounds(OverPounds).ToDisplayString(Unit)}";
+        ? Loc.T("weighIn.noLimit")
+        : MadeWeight
+            ? Loc.T("weighIn.made")
+            : Loc.T("weighIn.missedBy", Weight.FromPounds(OverPounds).ToDisplayString(Unit));
 
-    public string ScaleText => $"{Actual.ToDisplayString(Unit)}  /  {LimitWithAllowance.ToDisplayString(Unit)}";
+    public string ScaleText => Loc.T("weighIn.scale", Actual.ToDisplayString(Unit),
+        LimitWithAllowance.ToDisplayString(Unit));
 
     public string Summary => IsUnlimited
-        ? $"{Actual.ToDisplayString(Unit)} - no limit"
-        : $"{Actual.ToDisplayString(Unit)} vs {LimitWithAllowance.ToDisplayString(Unit)} - {VerdictText}";
+        ? Loc.T("weighIn.summaryNoLimit", Actual.ToDisplayString(Unit))
+        : Loc.T("weighIn.summary", Actual.ToDisplayString(Unit),
+            LimitWithAllowance.ToDisplayString(Unit), VerdictText);
 }
 
 public static class WeighIn

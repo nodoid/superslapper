@@ -1,3 +1,5 @@
+using SuperSlapper.Core.Localisation;
+
 namespace SuperSlapper.Core.Fight;
 
 public enum FightOutcomeKind
@@ -22,25 +24,25 @@ public static class FightOutcomeKinds
 
     public static string Display(this FightOutcomeKind kind) => kind switch
     {
-        FightOutcomeKind.Knockout => "KO",
-        FightOutcomeKind.TechnicalKnockout => "TKO",
-        FightOutcomeKind.Decision => "Unanimous decision",
-        FightOutcomeKind.SplitDecision => "Split decision",
-        FightOutcomeKind.MajorityDecision => "Majority decision",
-        FightOutcomeKind.Draw => "Draw",
-        FightOutcomeKind.Disqualification => "Disqualification",
-        _ => "No result"
+        FightOutcomeKind.Knockout => Loc.T("outcome.ko"),
+        FightOutcomeKind.TechnicalKnockout => Loc.T("outcome.tko"),
+        FightOutcomeKind.Decision => Loc.T("outcome.decision"),
+        FightOutcomeKind.SplitDecision => Loc.T("outcome.splitDecision"),
+        FightOutcomeKind.MajorityDecision => Loc.T("outcome.majorityDecision"),
+        FightOutcomeKind.Draw => Loc.T("outcome.draw"),
+        FightOutcomeKind.Disqualification => Loc.T("outcome.disqualification"),
+        _ => Loc.T("outcome.none")
     };
 
     public static string ShortDisplay(this FightOutcomeKind kind) => kind switch
     {
-        FightOutcomeKind.Knockout => "KO",
-        FightOutcomeKind.TechnicalKnockout => "TKO",
-        FightOutcomeKind.Decision => "UD",
-        FightOutcomeKind.SplitDecision => "SD",
-        FightOutcomeKind.MajorityDecision => "MD",
-        FightOutcomeKind.Draw => "D",
-        FightOutcomeKind.Disqualification => "DQ",
-        _ => "-"
+        FightOutcomeKind.Knockout => Loc.T("outcome.ko.short"),
+        FightOutcomeKind.TechnicalKnockout => Loc.T("outcome.tko.short"),
+        FightOutcomeKind.Decision => Loc.T("outcome.decision.short"),
+        FightOutcomeKind.SplitDecision => Loc.T("outcome.splitDecision.short"),
+        FightOutcomeKind.MajorityDecision => Loc.T("outcome.majorityDecision.short"),
+        FightOutcomeKind.Draw => Loc.T("outcome.draw.short"),
+        FightOutcomeKind.Disqualification => Loc.T("outcome.disqualification.short"),
+        _ => Loc.T("outcome.none.short")
     };
 }

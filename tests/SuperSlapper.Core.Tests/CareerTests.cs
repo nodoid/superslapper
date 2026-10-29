@@ -7,6 +7,7 @@ using SuperSlapper.Core.Random;
 using SuperSlapper.Core.Rules;
 using SuperSlapper.Core.Titles;
 using SuperSlapper.Core.Training;
+using LeagueBook = SuperSlapper.Core.Leagues.Leagues;
 
 namespace SuperSlapper.Core.Tests;
 
@@ -470,7 +471,7 @@ public class CareerTests
         var state = NewCareer(3131);
 
         // The world league stages a monthly card, which is how professionals fight.
-        state.PlayerLeagueId = SuperSlapper.Core.Leagues.Leagues.WorldSlapLeague.Id;
+        state.PlayerLeagueId = LeagueBook.WorldSlapLeague.Id;
         var offer = service.BookNextFight(state, new RandomSource(31));
 
         var card = Assert.Single(state.Cards);

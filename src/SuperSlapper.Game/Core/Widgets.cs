@@ -1,5 +1,7 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using SuperSlapper.Core.Localisation;
+using SuperSlapper.Core.Persistence;
 
 namespace SuperSlapper.Game.Core;
 
@@ -34,6 +36,12 @@ public sealed class Button
     public float PressedAmount { get; private set; }
 
     /// <summary>
+    /// Watches every press, when a head wants a record of them. Set from the same
+    /// trace the screens write to, so a phone session leaves one file behind.
+    /// </summary>
+    public static Action<string>? Trace { get; set; }
+
+    /// <summary>
     /// Slack around the frame that still counts as a hit. A fingertip is about
     /// 40 virtual pixels across and lands a little off the mark, so a button
     /// only as big as its drawing is a button that misses on a phone. Kept at
@@ -54,6 +62,7 @@ public sealed class Button
 
         if (Enabled && input.TappedIn(HitBox))
         {
+            Trace?.Invoke($"press \"{Text}\" at {Bounds.Left},{Bounds.Top}");
             clickSound?.Invoke();
             OnClick?.Invoke();
         }
@@ -107,6 +116,50 @@ public sealed class Button
                 new Vector2(rect.Center.X, rect.Center.Y + 14), Theme.Muted, 1f, TextAlign.Centre);
         }
     }
+}
+
+/// <summary>
+/// One volume chip: steps its channel from OFF up to LOUD and names the level it
+/// is on. Music and effects each get one, on the title screen and on the hub, so
+/// either can be turned down at any point in a career.
+/// </summary>
+public sealed class SoundToggle
+{
+    private readonly GameContext _context;
+    private readonly AudioChannel _channel;
+    private readonly Button _button;
+
+    public SoundToggle(Rectangle bounds, GameContext context, AudioChannel channel)
+    {
+        _context = context;
+        _channel = channel;
+        _button = new Button(bounds, Label(), Toggled, ButtonStyle.Ghost);
+    }
+
+    /// <summary>Where the chip sits. Read by the button sweep, which presses it.</summary>
+    public Rectangle Bounds => _button.Bounds;
+
+    /// <summary>The chip's current text, e.g. "MUSIC: NORMAL".</summary>
+    public string ChipLabel => _button.Text;
+
+    private string Label() => Loc.T("sound.chip", ChannelName(_channel), LevelName(_channel));
+
+    private static string ChannelName(AudioChannel channel) =>
+        Loc.T(channel == AudioChannel.Music ? "sound.music" : "sound.effects");
+
+    private string LevelName(AudioChannel channel) =>
+        Loc.T($"sound.level.{_context.Settings.For(channel).Index}");
+
+    private void Toggled()
+    {
+        _context.CycleLevel(_channel);
+        _button.Text = Label();
+    }
+
+    public void Update(GameTime time, InputState input) =>
+        _button.Update(time, input, () => _context.Assets.Play("ui_click", 0.5f));
+
+    public void Draw(SpriteBatch batch) => _button.Draw(batch, _context.Assets);
 }
 
 /// <summary>

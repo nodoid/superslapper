@@ -319,6 +319,71 @@ public class FightEngineTests
     }
 
     [Fact]
+    public void RoundNumberTurnsOverWhenTheNextRoundIsBroughtOn()
+    {
+        var rules = Rulesets.WorldSlapLeague.Clone();
+        rules.Rounds = 2;
+        rules.FoulsBeforeDisqualification = 2;
+        var engine = new FightEngine(MakeFighter("a", 10), MakeFighter("b", 10), rules, new RandomSource(9));
+
+        var guard = 0;
+        while (engine.Phase != FightPhase.RoundBreak && engine.Phase != FightPhase.Finished && guard++ < 40)
+        {
+            if (engine.Phase == FightPhase.AwaitingSlap)
+            {
+                engine.DeliverSlap(new SlapAttempt { Aim = 0.9, PowerCharge = 0.3, Timing = 0.9 });
+            }
+            else if (engine.Phase == FightPhase.AwaitingCount)
+            {
+                engine.ResolveCount();
+            }
+        }
+
+        Assert.Equal(FightPhase.RoundBreak, engine.Phase);
+
+        // The break still belongs to the round that just finished - the round card
+        // announces the new one only once the next round is brought on.
+        Assert.Equal(1, engine.Round);
+        engine.StartNextRound();
+        Assert.Equal(2, engine.Round);
+    }
+
+    [Fact]
+    public void EveryRoundOpensOnTheSameStriker()
+    {
+        var rules = Rulesets.WorldSlapLeague.Clone();
+        rules.Rounds = 3;
+        rules.FoulsBeforeDisqualification = 2;
+        var engine = new FightEngine(MakeFighter("a", 10), MakeFighter("b", 10), rules, new RandomSource(4));
+
+        var openers = new List<bool>();
+        var guard = 0;
+        while (engine.Phase != FightPhase.Finished && guard++ < 200)
+        {
+            if (engine.Phase == FightPhase.AwaitingSlap)
+            {
+                if (engine.SlapsThisRoundA + engine.SlapsThisRoundB == 0)
+                {
+                    openers.Add(engine.StrikerIsA);
+                }
+
+                engine.DeliverSlap(new SlapAttempt { Aim = 0.9, PowerCharge = 0.3, Timing = 0.9 });
+            }
+            else if (engine.Phase == FightPhase.AwaitingCount)
+            {
+                engine.ResolveCount();
+            }
+            else
+            {
+                engine.StartNextRound();
+            }
+        }
+
+        Assert.True(openers.Count >= 2, $"Expected at least two rounds, saw {openers.Count}.");
+        Assert.All(openers, opener => Assert.Equal(openers[0], opener));
+    }
+
+    [Fact]
     public void AiAttemptStaysInRange()
     {
         var rng = new RandomSource(10);
