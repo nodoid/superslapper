@@ -466,6 +466,12 @@ for your own team. `Release/ios/SuperSlapper.app` is the distribution-signed
 build; it will not install on a phone for testing, so it is an upload, not a
 test build.
 
+`src/SuperSlapper.iOS/Info.plist` also carries purpose strings for the APIs the
+.NET iOS runtime links but the game never calls: calendar, contacts, microphone,
+Apple Music, Siri, location and Bluetooth. An upload without one per linked API
+is rejected (ITMS-90683) even though nothing ever asks for the permission, and
+no permission prompt appears at runtime.
+
 App Store Connect takes an `.ipa`, which is the same bundle in a `Payload`
 folder:
 

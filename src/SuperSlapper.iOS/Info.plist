@@ -26,6 +26,25 @@
 	<string>18.0</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>© 2026 Paul F. Johnson. All rights reserved.</string>
+	<!-- The .NET iOS runtime links a framework for every binding, including APIs
+	     the game never calls, and validation asks for a purpose string for each.
+	     These keep the bundle uploadable; none of them is ever requested. -->
+	<key>NSAppleMusicUsageDescription</key>
+	<string>SuperSlapper does not access your Apple Music library.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>SuperSlapper does not use Bluetooth.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>SuperSlapper does not read or write your calendar.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>SuperSlapper does not read your contacts.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>SuperSlapper does not use your location.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>SuperSlapper does not use your location.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>SuperSlapper plays sound but does not record from the microphone.</string>
+	<key>NSSiriUsageDescription</key>
+	<string>SuperSlapper does not use Siri.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UIRequiresFullScreen</key>
