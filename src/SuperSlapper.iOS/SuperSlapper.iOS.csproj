@@ -15,9 +15,19 @@
     <Company>Paul F. Johnson</Company>
     <Product>SuperSlapper</Product>
     <Copyright>© 2026 Paul F. Johnson</Copyright>
-    <CodesignKey>Apple Development: Paul Johnson (WFWPL93CN6)</CodesignKey>
-    <CodesignProvision>devel-slapper</CodesignProvision>
-    <CodesignEntitlements>Entitlements.plist</CodesignEntitlements>
+    <!-- Debug is signed for the phone on the desk: a development certificate and
+         the development profile, so the IDE can launch onto a device. Any other
+         configuration is a build to hand to Apple, and has to be signed with the
+         distribution certificate and the App Store profile instead: a store
+         submission signed with a development identity is rejected outright. -->
+    <CodesignKey Condition="'$(Configuration)' == 'Debug'">Apple Development: Paul Johnson (WFWPL93CN6)</CodesignKey>
+    <CodesignProvision Condition="'$(Configuration)' == 'Debug'">devel-slapper</CodesignProvision>
+    <CodesignEntitlements Condition="'$(Configuration)' == 'Debug'">Entitlements.plist</CodesignEntitlements>
+    <CodesignKey Condition="'$(Configuration)' != 'Debug'">Apple Distribution: Paul Johnson (3UH7BE38T3)</CodesignKey>
+    <CodesignProvision Condition="'$(Configuration)' != 'Debug'">rel-slapper</CodesignProvision>
+    <!-- Distribution entitlements carry no get-task-allow: the App Store profile
+         forbids it, and a bundle signed with it is refused. -->
+    <CodesignEntitlements Condition="'$(Configuration)' != 'Debug'">Entitlements.Distribution.plist</CodesignEntitlements>
     <!-- MonoGame resolves art and audio by name at runtime, so keep trimming off. -->
     <MtouchLink>None</MtouchLink>
     <RuntimeIdentifier>ios-arm64</RuntimeIdentifier>
@@ -41,6 +51,7 @@
     <!-- actool only emits icon renditions when it is told which set is the icon. -->
     <ImageAsset Include="Assets.xcassets/**/*.*" />
     <None Include="Entitlements.plist" />
+    <None Include="Entitlements.Distribution.plist" />
     <!-- The privacy manifest has to sit at the root of the app bundle, or App
          Store review cannot find it. -->
     <BundleResource Include="PrivacyInfo.xcprivacy" />

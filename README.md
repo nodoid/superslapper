@@ -342,7 +342,7 @@ when they fail.
 Self-contained, one folder per platform, all of them under `Release/`:
 
 ```bash
-dotnet publish src/SuperSlapper.Desktop -f net10.0 -c Release -r osx-arm64 --self-contained -o Release/mac
+./tools/release/macos.sh
 dotnet publish src/SuperSlapper.Desktop -f net10.0 -c Release -r linux-x64 --self-contained -o Release/linux
 dotnet publish src/SuperSlapper.Desktop -f net10.0-windows -c Release -r win-x64 --self-contained -o Release/windows
 ```
@@ -360,9 +360,35 @@ cp -R src/SuperSlapper.iOS/bin/Release/net10.0-ios/ios-arm64/SuperSlapper.app Re
 ```
 
 The iOS build leaves LLVM code generation off: it is a Release build either way,
-and LLVM AOT turns a two-minute link into an hour. `Release/mac` carries
-`PrivacyInfo.xcprivacy` beside the executable (see the privacy note above);
-`Release/ios/SuperSlapper.app` has it at the root of the bundle.
+and LLVM AOT turns a two-minute link into an hour. Both Apple artefacts are
+signed for distribution, not for development: `Release/mac/SuperSlapper.app`
+carries the Apple Distribution signature, the `rel-slapper-mac` profile and the
+privacy manifest under `Contents/Resources` (see the privacy note above), and
+`Release/ios/SuperSlapper.app` the same identity with `rel-slapper` and the
+manifest at the root of the bundle. Neither installs on a local machine - a
+production profile only works through the App Store - so they are uploads, not
+test builds.
+
+### macOS
+
+```bash
+./tools/release/macos.sh
+```
+
+`Release/mac` is a `.app`, not a folder: the macOS build is signed for the Mac
+App Store with the Apple Distribution certificate and the `rel-slapper-mac`
+profile named at the top of the script. The profile has to be installed in
+`~/Library/MobileDevice/Provisioning Profiles`, or passed as
+`MAC_PROFILE=<path>`. The bundle carries `Contents/Info.plist`, the profile at
+`Contents/embedded.provisionprofile`, the privacy manifest and the art and audio
+under `Contents/Resources`. Content belongs there and not in `Contents/MacOS`:
+SDL answers a macOS bundle with its `Resources` directory as the base path, so a
+`Content` folder next to the binary leaves the app with no art, fonts or sound.
+
+The entitlements are `src/SuperSlapper.Desktop/Entitlements.plist`. They do not
+include `com.apple.security.app-sandbox`: the game aborts at launch under the
+sandbox (`HIServices _RegisterApplication`), and a Mac App Store upload needs
+that fixed before it can carry the entitlement.
 
 ### Android
 
@@ -381,21 +407,25 @@ configure a release keystore, so it is installable but not store-ready.
 dotnet build src/SuperSlapper.iOS -f net10.0-ios -r ios-arm64
 ```
 
-For the simulator use `-r iossimulator-arm64` (or `iossimulator-x64`). A device
-build needs an Apple Development certificate and the provisioning profile named
-in `SuperSlapper.iOS.csproj` (`devel-slapper`); edit `CodesignKey`,
-`CodesignProvision` and `Entitlements.plist` for your own team.
+For the simulator use `-r iossimulator-arm64` (or `iossimulator-x64`). Signing is
+chosen by configuration in `SuperSlapper.iOS.csproj`: a `Debug` device build uses
+the Apple Development certificate, the development profile (`devel-slapper`) and
+`Entitlements.plist`, so it can be launched onto a phone; every other
+configuration uses the Apple Distribution certificate, the App Store profile
+(`rel-slapper`) and `Entitlements.Distribution.plist`, which has no
+`get-task-allow` because the store profile forbids it. Edit those four settings
+for your own team. `Release/ios/SuperSlapper.app` is the distribution-signed
+build, ready for a store upload; it will not install on a phone for testing.
 
 The app ships a privacy manifest, `src/SuperSlapper.iOS/PrivacyInfo.xcprivacy`,
 declaring the two required-reason APIs it uses: file timestamps (`C61E.1`) when it
 reads and writes the save, and user defaults (`CA92.1`) for the preferences that
 sit beside it. It is copied to the root of the bundle by the iOS project; App
 Store review looks for it there. The macOS head carries the same file
-(`src/SuperSlapper.Desktop/PrivacyInfo.xcprivacy`), and it is published beside the
-executable in `Release/mac`, because a macOS build is handed out as a folder
-rather than a bundle. A Mac App Store build has to be a `.app` with the manifest
-at `Contents/Resources/PrivacyInfo.xcprivacy` - that is the path review checks,
-and a copy next to the binary will not be found. The iPhone smoke
+(`src/SuperSlapper.Desktop/PrivacyInfo.xcprivacy`), placed by
+`tools/release/macos.sh` at `Contents/Resources/PrivacyInfo.xcprivacy` - that is
+the path review checks for a macOS bundle, and a copy next to the binary would
+not be found. The iPhone smoke
 test runs the self-test on device by launching with `SUPERSLAPPER_SELFTEST=selftest`,
 which writes the captures into the app's own Documents folder. With a phone
 plugged in and paired, that is:

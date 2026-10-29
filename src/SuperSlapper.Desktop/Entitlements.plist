@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- The three entitlements the App Store profile rel-slapper-mac grants. -->
+	<key>com.apple.application-identifier</key>
+	<string>3UH7BE38T3.uk.co.allthejohnsons.superslapper</string>
+	<key>com.apple.developer.team-identifier</key>
+	<string>3UH7BE38T3</string>
+	<key>keychain-access-groups</key>
+	<array>
+		<string>3UH7BE38T3.uk.co.allthejohnsons.superslapper</string>
+	</array>
+	<!-- com.apple.security.app-sandbox is deliberately absent. A Mac App Store
+	     build has to carry it, but this app aborts at launch under the sandbox
+	     (HIServices _RegisterApplication), so signing one that way would ship a
+	     build that dies on the first frame. The build is signed for distribution
+	     and needs the sandbox work before it can be uploaded. -->
+</dict>
+</plist>

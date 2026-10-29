@@ -7,7 +7,8 @@ obj/
 .DS_Store
 out/
 # Distribution builds: one folder per platform, nothing here is tracked.
-Release/
+# Anchored, so tools/release (the packaging scripts) is not swallowed too.
+/Release/
 *.app/
 *.apk
 *.ipa
