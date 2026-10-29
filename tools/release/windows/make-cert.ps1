@@ -6,14 +6,15 @@ with, and exports it beside them so it can be trusted for sideload testing.
         -File '\\Mac\Home\RiderProjects\superslap\tools\release\windows\make-cert.ps1'
 
 A self-signed certificate installs on a machine that trusts it and is not what
-the Microsoft Store accepts: a store listing needs a certificate issued by a CA
-or by Partner Center, with the publisher CN matching the listing. The subject
-here is CN=Paul F. Johnson, which is also the Publisher in AppxManifest.xml.
+the Microsoft Store accepts for a trusted install: the subject here is the
+publisher identity Partner Center assigned to the app, which is also the
+Publisher in AppxManifest.xml, so a sideloaded package is accepted. Change both
+if the account's publisher identity ever changes.
 #>
 param(
     [string]$Share = "\\Mac\Home\RiderProjects\superslap\out\msix",
     [string]$Work = "C:\msix",
-    [string]$Subject = "CN=Paul F. Johnson"
+    [string]$Subject = "CN=A6EAEB04-6634-41C1-BDFE-695819ECE444"
 )
 
 $ErrorActionPreference = "Stop"

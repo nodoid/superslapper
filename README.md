@@ -525,18 +525,19 @@ the staged layout through its shared folder and writes the package back.
 scripts in `tools/release/windows` are the ones that run inside the guest; see
 `tools/release/windows/README.md` for the one-off setup.
 
-A self-signed certificate installs on a machine that trusts it and nowhere else:
-the Microsoft Store wants a certificate from a CA, or one issued through Partner
-Center, whose subject matches the publisher in the manifest. The certificate is
-created once and then reused, because signing each build with a fresh one changes
-the package identity and orphans the previous install.
+The manifest's three identity values are the ones on Partner Center's Product
+identity page, and package validation compares them field by field: `Identity`
+Name is `49556nodoid.SuperSlapper`, `Publisher` is `CN=A6EAEB04-6634-41C1-BDFE-695819ECE444`,
+and `PublisherDisplayName` is `all-the-johnsons`, the account name rather than a
+person's name. Any difference is refused by name, so copy them from Partner
+Center rather than deriving them.
 
-The manifest's `PublisherDisplayName` is `all-the-johnsons`, the Partner Center
-account name rather than a person's name: package validation compares it with the
-account's publisher display name and refuses the upload on any difference. The
-`Identity` name and publisher in the same manifest are compared against the
-product identity in Partner Center, so those two have to be copied from there if
-the account ever changes.
+A self-signed certificate installs on a machine that trusts it and nowhere else.
+Its subject is the publisher identity above, the same string as the manifest's
+`Publisher`, because Windows refuses a sideloaded package when the two differ;
+the Store re-signs what you upload, so the certificate only matters for local
+installs. It is created once and then reused, because signing each build with a
+fresh one changes the package identity and orphans the previous install.
 
 ## Regenerating content
 

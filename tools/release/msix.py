@@ -21,8 +21,13 @@ import sys
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
-IDENTITY_NAME = "PaulFJohnson.SuperSlapper"
-PUBLISHER = "CN=Paul F. Johnson"
+# The three identity values are the product identity Partner Center shows on the
+# Product identity page for this app. Validation compares them field by field and
+# names any that differ, so they are copied from there rather than invented. The
+# certificate the package is signed with has to carry the same publisher for a
+# sideload install to be accepted (Store uploads are re-signed).
+IDENTITY_NAME = "49556nodoid.SuperSlapper"
+PUBLISHER = "CN=A6EAEB04-6634-41C1-BDFE-695819ECE444"
 # Partner Center checks this against the account's publisher display name and
 # refuses the package if the two differ, so it is the account name, not the
 # person's name. The Identity Publisher above is a separate field.

@@ -17,7 +17,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $tools = Join-Path $Work "buildtools\bin\10.0.28000.0\arm64"
-$name = "PaulFJohnson.SuperSlapper"
+$name = "SuperSlapper"
 
 foreach ($arch in @("x64", "arm64")) {
     Write-Output "verifying $arch"

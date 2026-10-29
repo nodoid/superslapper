@@ -39,9 +39,11 @@ prlctl exec "Windows 11" powershell -NoProfile -ExecutionPolicy Bypass \
     -File '\\Mac\Home\RiderProjects\superslap\tools\release\windows\make-cert.ps1'
 ```
 
-It creates a self-signed code-signing certificate for `CN=Paul F. Johnson`, keeps
-the `.pfx` and its password under `C:\msix`, and exports
-`SuperSlapper-selfsigned.cer` next to the packages. That `.cer` has to be trusted
+It creates a self-signed code-signing certificate for `CN=A6EAEB04-6634-41C1-BDFE-695819ECE444`,
+the publisher identity Partner Center assigned to the app, keeps the `.pfx` and
+its password under `C:\msix`, and exports `SuperSlapper-selfsigned.cer` next to
+the packages. The subject has to equal the manifest's `Publisher`, or Windows
+refuses to install the package. That `.cer` has to be trusted
 on any machine the packages are sideloaded onto:
 
 ```powershell
@@ -49,8 +51,9 @@ certutil -addstore Root SuperSlapper-selfsigned.cer
 ```
 
 The certificate is deliberately not recreated per build: a new one changes the
-package identity. For a Store listing, replace it with a certificate from a CA
-or Partner Center and keep the manifest's `Publisher` in step with its subject.
+package identity. It is only what makes local installs work — the Store re-signs
+an uploaded package — so keep its subject in step with the manifest's `Publisher`,
+which is the identity from Partner Center.
 
 ## 4. Checking a build
 
