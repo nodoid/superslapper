@@ -58,6 +58,16 @@ dotnet publish "$root/src/SuperSlapper.Desktop/SuperSlapper.Desktop.csproj" \
 rm -f "$macos/PrivacyInfo.xcprivacy"
 cp "$root/src/SuperSlapper.Desktop/PrivacyInfo.xcprivacy" "$resources/PrivacyInfo.xcprivacy"
 
+# createdump is the runtime's crash-dump helper, shipped as a nested executable.
+# The store wants a provisioning profile with an application identifier for every
+# executable in the bundle, and that helper has no reason to carry one: the game
+# never asks the runtime to write a dump, so nothing ever starts it.
+rm -f "$macos/createdump"
+
+# The icon lives in Resources and Info.plist names it: without a 1024px
+# icon_512x512@2x in the ICNS, validation reports the bundle as having no icon.
+cp "$root/src/SuperSlapper.Desktop/Assets/SuperSlapper.icns" "$resources/SuperSlapper.icns"
+
 # SDL answers a macOS bundle with Contents/Resources as its base path, and
 # MonoGame reads Content relative to that. Left in Contents/MacOS the app starts
 # with no art, no fonts and no sounds at all.
@@ -71,6 +81,8 @@ cat > "$app/Contents/Info.plist" <<PLIST
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleExecutable</key>
+	<string>SuperSlapper</string>
+	<key>CFBundleIconFile</key>
 	<string>SuperSlapper</string>
 	<key>CFBundleIdentifier</key>
 	<string>uk.co.allthejohnsons.superslapper</string>
@@ -99,6 +111,10 @@ cat > "$app/Contents/Info.plist" <<PLIST
 PLIST
 
 cp "$profile" "$app/Contents/embedded.provisionprofile"
+# The profile usually arrives from the developer portal by browser, so it can
+# carry a quarantine flag. That flag travels into the installer payload as an
+# AppleDouble ._ file, so clear it before the bundle is sealed.
+xattr -c "$app/Contents/embedded.provisionprofile"
 
 # --deep signs what is inside before sealing the bundle. A publish folder is all
 # loose Mach-O files and managed assemblies: signing the bundle without it fails
@@ -111,5 +127,14 @@ codesign --force --deep --sign "$identity" \
 echo "==> verifying"
 codesign --verify --deep --strict --verbose=2 "$app"
 codesign -dvv "$app" 2>&1 | grep -E "Authority|TeamIdentifier"
+
+# Both of these are rejections from the store, not warnings, so fail the build.
+codesign -d --entitlements - "$app" 2>/dev/null \
+    | grep -q "com.apple.security.app-sandbox" \
+    || { echo "the signature is missing com.apple.security.app-sandbox" >&2; exit 1; }
+[ -f "$resources/SuperSlapper.icns" ] \
+    || { echo "Contents/Resources/SuperSlapper.icns is missing" >&2; exit 1; }
+[ ! -e "$macos/createdump" ] \
+    || { echo "createdump is still in Contents/MacOS" >&2; exit 1; }
 
 echo "==> $app"

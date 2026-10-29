@@ -11,10 +11,9 @@
 	<array>
 		<string>3UH7BE38T3.uk.co.allthejohnsons.superslapper</string>
 	</array>
-	<!-- com.apple.security.app-sandbox is deliberately absent. A Mac App Store
-	     build has to carry it, but this app aborts at launch under the sandbox
-	     (HIServices _RegisterApplication), so signing one that way would ship a
-	     build that dies on the first frame. The build is signed for distribution
-	     and needs the sandbox work before it can be uploaded. -->
+	<!-- The Mac App Store will not accept a bundle without this, and validation
+	     names every executable that is missing it. -->
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
 </dict>
 </plist>

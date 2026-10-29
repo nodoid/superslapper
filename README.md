@@ -397,10 +397,28 @@ under `Contents/Resources`. Content belongs there and not in `Contents/MacOS`:
 SDL answers a macOS bundle with its `Resources` directory as the base path, so a
 `Content` folder next to the binary leaves the app with no art, fonts or sound.
 
-The entitlements are `src/SuperSlapper.Desktop/Entitlements.plist`. They do not
-include `com.apple.security.app-sandbox`: the game aborts at launch under the
-sandbox (`HIServices _RegisterApplication`), and a Mac App Store upload needs
-that fixed before it can carry the entitlement.
+The entitlements are `src/SuperSlapper.Desktop/Entitlements.plist`: the three the
+`rel-slapper-mac` profile grants, plus `com.apple.security.app-sandbox`. The Mac
+App Store rejects a bundle without the sandbox, and validation names every
+executable that lacks it - which is why the script deletes `createdump` after
+publishing. That file is the runtime's crash-dump helper, a nested executable,
+and the store expects a provisioning profile carrying an application identifier
+for anything it finds. Nothing starts it: the game never asks for a dump.
+
+The icon is `src/SuperSlapper.Desktop/Assets/SuperSlapper.icns`, written by
+`tools/artgen` and copied into `Contents/Resources` under the name
+`CFBundleIconFile` gives. Validation reads that file and wants a 512pt @2x
+image (1024px) inside it, so the size that matters is the one in that iconset's
+`icon_512x512@2x.png`.
+
+The sandbox has only been checked on paper. A distribution-signed bundle does
+not launch outside the store, so the shipped artefact cannot be run here; a
+development-signed copy of the same bundle, with the same entitlements, dies at
+`HIServices _RegisterApplication` because launchd refuses its lookup of
+`com.apple.coreservices.launchservicesd`. Granting that lookup through
+`com.apple.security.temporary-exception.mach-lookup.global-name` makes the same
+build run under the sandbox, but Apple rejects that exception, so the entitlement
+is not in the plist. Exercise this build on a Mac before submitting it.
 
 ### Android
 
