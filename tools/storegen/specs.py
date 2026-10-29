@@ -15,9 +15,11 @@ without hunting:
 
   Apple App Store
     https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications/
-    A 6.9-inch iPhone set is required; a 13-inch iPad set is required for a title
-    that supports iPad, which this one does (UIDeviceFamily 1 and 2). Landscape
-    sizes are accepted, and the app is landscape only.
+    The required iPhone size is "iPhone with Dynamic Island (medium display)":
+    1206x2622 or 1179x2556 portrait, so 2622x1206 in landscape. The 6.9-inch
+    2868x1320 set is still accepted and is what the large phones show. A 13-inch
+    iPad set (2752x2064 landscape) is required for a title that supports iPad,
+    which this one does (UIDeviceFamily 1 and 2). The app is landscape only.
 
   Google Play
     https://support.google.com/googleplay/android-developer/answer/9866151
@@ -123,7 +125,11 @@ SHOTS: tuple[Shot, ...] = (
 # 1366x768-or-larger for desktop, and Google accepts 320-3840 px sides.
 SHOT_LANDSCAPE = (1920, 1080)
 
-# Apple wants the 6.9-inch set, and accepts it either way up. The app is
-# landscape only, so these are the landscape dimensions.
+# The required set: iPhone with Dynamic Island (medium display), the size App
+# Store Connect asks for first. Landscape, because the app is landscape only.
+APPLE_IPHONE_MEDIUM = (2622, 1206)
+
+# The largest accepted set (6.9-inch), used for the large phones. Accepted, not
+# required; App Store Connect will not scale up to it on its own.
 APPLE_IPHONE = (2868, 1320)
 APPLE_IPAD = (2752, 2064)

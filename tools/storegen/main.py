@@ -230,6 +230,8 @@ def main() -> int:
 
     # ---- Apple App Store
     write_key_art(apple, specs.APPLE_ICON, {"icon_1024.png": small_icon})
+    write_shots(os.path.join(apple, "screenshots_iphone_medium_2622x1206"), args.captures,
+                specs.APPLE_IPHONE_MEDIUM, captioned=True)
     write_shots(os.path.join(apple, "screenshots_iphone_6.9_2868x1320"), args.captures,
                 specs.APPLE_IPHONE, captioned=True)
     write_shots(os.path.join(apple, "screenshots_ipad_13_2752x2064"), args.captures,

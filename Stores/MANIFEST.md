@@ -33,6 +33,14 @@ Exact requirements and their sources are in `tools/storegen/specs.py`.
 | Xbox | `images/screenshots_1920x1080/07_aim_the_slap.png` | 1920x1080 | 707 KB |
 | Xbox | `images/screenshots_1920x1080/08_belts_and_purses.png` | 1920x1080 | 327 KB |
 | AppStore | `images/icon_1024.png` | 1024x1024 | 149 KB |
+| AppStore | `images/screenshots_iphone_medium_2622x1206/01_build_a_fighter.png` | 2622x1206 | 707 KB |
+| AppStore | `images/screenshots_iphone_medium_2622x1206/02_run_the_career.png` | 2622x1206 | 712 KB |
+| AppStore | `images/screenshots_iphone_medium_2622x1206/03_train_the_camp.png` | 2622x1206 | 828 KB |
+| AppStore | `images/screenshots_iphone_medium_2622x1206/04_fight_nights_on_a_calendar.png` | 2622x1206 | 574 KB |
+| AppStore | `images/screenshots_iphone_medium_2622x1206/05_five_bouts_a_card.png` | 2622x1206 | 656 KB |
+| AppStore | `images/screenshots_iphone_medium_2622x1206/06_make_the_weight.png` | 2622x1206 | 532 KB |
+| AppStore | `images/screenshots_iphone_medium_2622x1206/07_aim_the_slap.png` | 2622x1206 | 844 KB |
+| AppStore | `images/screenshots_iphone_medium_2622x1206/08_belts_and_purses.png` | 2622x1206 | 492 KB |
 | AppStore | `images/screenshots_iphone_6.9_2868x1320/01_build_a_fighter.png` | 2868x1320 | 805 KB |
 | AppStore | `images/screenshots_iphone_6.9_2868x1320/02_run_the_career.png` | 2868x1320 | 807 KB |
 | AppStore | `images/screenshots_iphone_6.9_2868x1320/03_train_the_camp.png` | 2868x1320 | 947 KB |
