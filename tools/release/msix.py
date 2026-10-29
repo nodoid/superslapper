@@ -23,7 +23,10 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 IDENTITY_NAME = "PaulFJohnson.SuperSlapper"
 PUBLISHER = "CN=Paul F. Johnson"
-PUBLISHER_DISPLAY = "Paul F. Johnson"
+# Partner Center checks this against the account's publisher display name and
+# refuses the package if the two differ, so it is the account name, not the
+# person's name. The Identity Publisher above is a separate field.
+PUBLISHER_DISPLAY = "all-the-johnsons"
 DISPLAY_NAME = "SuperSlapper"
 DESCRIPTION = "Slap-fighting career sim"
 VERSION = "1.0.0.0"

@@ -7,7 +7,7 @@ the lengths are checked by `python3 tools/storegen/main.py`.
 | Field | Value |
 | --- | --- |
 | Product name | SuperSlapper |
-| Developer / publisher | Paul F. Johnson |
+| Developer / publisher | all-the-johnsons |
 | Package | `SuperSlapper` (Windows desktop head, `net10.0-windows`) |
 | Version / release | 1.0 (first release) |
 | Category | Games → Sports |

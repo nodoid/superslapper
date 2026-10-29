@@ -531,6 +531,13 @@ Center, whose subject matches the publisher in the manifest. The certificate is
 created once and then reused, because signing each build with a fresh one changes
 the package identity and orphans the previous install.
 
+The manifest's `PublisherDisplayName` is `all-the-johnsons`, the Partner Center
+account name rather than a person's name: package validation compares it with the
+account's publisher display name and refuses the upload on any difference. The
+`Identity` name and publisher in the same manifest are compared against the
+product identity in Partner Center, so those two have to be copied from there if
+the account ever changes.
+
 ## Regenerating content
 
 ```bash
