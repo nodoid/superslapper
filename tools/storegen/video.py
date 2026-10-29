@@ -3,8 +3,8 @@
 
 The app is launched with the scripted demo switched on (``SUPERSLAPPER_DEMO``),
 the simulator screen is filmed while it plays, and the take is cut down to one
-app preview: 15-30 seconds of landscape 6.9-inch footage, H.264, with the game's
-own music under it.
+app preview: 15-30 seconds of landscape footage at the 1920x886 / 30 fps / H.264
+High Profile the App Store accepts, with the game's own music under it.
 
 The cut is not guessed at. Every beat the demo reaches is written to a log inside
 the app's own container, stamped with the wall clock, and this script notes the
@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import json
 import os
 import re
 import shutil
@@ -45,8 +46,21 @@ def output_name(device_name: str) -> str:
     """Named the way the other captures in ~/Movies are: what it is, and on what."""
     return os.path.join(MOVIES, f"SuperSlapper - iOS gameplay ({device_name}).mp4")
 
-# The size App Store Connect asks for on a 6.9-inch iPhone, landscape.
-WIDTH, HEIGHT = 2868, 1320
+# The resolution App Store Connect accepts for an iPhone app preview, landscape.
+# It is deliberately not the device's own 2868x1320: Apple defines 1920x886 as
+# the accepted file size for every iPhone with a Dynamic Island, and rejects the
+# native capture dimensions.
+#   https://developer.apple.com/help/app-store-connect/reference/app-information/app-preview-specifications/
+WIDTH, HEIGHT = 1920, 886
+
+# App previews are capped at 30 fps (the simulator records at 60) and at
+# 10-12 Mbps, High Profile Level 4.0, with 256 kbps stereo AAC. The encode is
+# quality-driven with the 12 Mbps ceiling as its cap: x264 will not pad a target
+# up to 11 Mbps on flat game art, and filler bits would buy nothing.
+FRAMES = 30
+QUALITY = 17
+AUDIO_RATE = "256k"
+SAMPLE_RATE = "48000"
 
 # The music bed: the menu track under everything before the bout, the fight track
 # from the bout on, crossfaded where the edit crosses over.
@@ -64,21 +78,23 @@ CROSSFADE = 0.5
 # the slap replay inside a bout are found.
 EDIT = [
     # The title, logo settling, and NEW CAREER going down.
-    ("start", 0.1, "beat:title-out", 0.6),
+    ("start", 0.1, "beat:title-out", 0.3),
     # The fighter builder, then START CAREER.
-    ("beat:create-in", 0.15, "beat:create-out", 0.5),
+    ("beat:create-in", 0.15, "beat:create-out", 0.35),
     # The career dashboard, and TRAINING.
-    ("beat:hub-in", 0.3, "beat:hub-out", 0.5),
+    ("beat:hub-in", 0.3, "beat:hub-out", 0.3),
     # A camp session going on the log.
-    ("beat:training-in", 0.5, "beat:training-in", 3.2),
+    ("beat:training-in", 0.5, "beat:training-in", 2.2),
     # A month forward and a day picked on the calendar.
-    ("beat:calendar-in", 0.2, "beat:calendar-in", 3.0),
+    ("beat:calendar-in", 0.2, "beat:calendar-in", 1.8),
     # Step on the scale, then into the ring.
     ("beat:weigh_in-in", 0.4, "beat:bout-in", 1.0),
-    # The bout: the call, the power bar stopped in the gold, the slap and its replay.
-    ("beat:bout-in", 0.9, "bout:PlayerRecover", 1.6),
+    # The bout: the round card, the rival's turn, then the call, the power bar and
+    # the slap. Starting on the placard rather than on the dark intro keeps the
+    # card that tells the viewer which round they are watching.
+    ("bout:RoundPlacard", 0.2, "bout:PlayerSwing", 0.4),
     # The finish, and the verdict on the card.
-    ("beat:bout-out", -2.3, "beat:result-in", 2.3),
+    ("beat:bout-out", -1.8, "beat:result-in", 1.2),
 ]
 # -----------------------------------------------------------------------------
 
@@ -149,7 +165,9 @@ def read_log(log: str) -> dict[str, dt.datetime]:
         elif match := complete.search(line):
             events["complete"] = stamp(match.group(1))
         elif match := bout.search(line):
-            events[f"bout:{match.group(1)}"] = stamp(match.group(2))
+            # A beat is reached once per round, so keep the first time it happened:
+            # the edit wants the exchange in round one, not the last round's.
+            events.setdefault(f"bout:{match.group(1)}", stamp(match.group(2)))
         elif match := beaten.search(line):
             names.append((match.group(1), stamp(match.group(2))))
             events[f"beat:{match.group(1)}-out"] = stamp(match.group(2))
@@ -179,22 +197,88 @@ def plan(events: dict[str, dt.datetime]) -> list[tuple[float, float]]:
     return windows
 
 
+def housing_and_size(path: str) -> tuple[tuple[int, int, int, int] | None, tuple[int, int]]:
+    """Where the device's sensor housing sits in the take, and how big the take is.
+
+    A simulator recording has the Dynamic Island burnt into the picture, and it
+    sits inside the game's own letterbox column. Its first frame is not usable -
+    the recording starts before the game has drawn - so a frame from inside the
+    run is sampled and the black pixels in that column are taken as the housing,
+    which nothing else in the letterbox can be.
+    """
+    from PIL import Image  # imported here so the tool works without it for the rest
+
+    handle = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
+    handle.close()
+
+    try:
+        run(["ffmpeg", "-y", "-v", "error", "-ss", "2", "-i", path,
+             "-frames:v", "1", handle.name])
+        with Image.open(handle.name) as image:
+            frame = image.convert("RGB")
+    finally:
+        os.remove(handle.name)
+
+    width, height = frame.size
+    column = max(0, (width - round(height * 16 / 9)) // 2)
+    pixels = frame.load()
+
+    box = [(x, y) for y in range(height) for x in range(column)
+           if sum(pixels[x, y]) < 21]
+
+    if not box:
+        return None, (width, height)
+
+    left = min(x for x, _ in box) - 2
+    top = min(y for _, y in box) - 2
+    right = max(x for x, _ in box) + 2
+    bottom = max(y for _, y in box) + 2
+
+    return (max(0, left), max(0, top), right - left, bottom - top), (width, height)
+
+
 def assemble(windows: list[tuple[float, float]], take: str, out: str) -> float:
     """Cuts the windows out of the take, joins them, and scores the result."""
+    housing, (take_width, take_height) = housing_and_size(take)
     filters = []
     labels = []
     for index, (start, end) in enumerate(windows):
         # Trimming inside the filter graph rather than with -ss keeps the joins
         # frame-accurate and needs only one pass over the take.
+        # The simulator records at a low, variable frame rate, so the take is made
+        # constant-frame-rate before it is cut: trimming a variable take leaves each
+        # segment ending on its last real frame, and the missing gap between that
+        # frame and the window's end is time the joined edit silently loses.
         filters.append(
-            f"[0:v]trim=start={start:.3f}:end={end:.3f},setpts=PTS-STARTPTS[v{index}]")
+            f"[0:v]fps={FRAMES},trim=start={start:.3f}:end={end:.3f},"
+            f"setpts=PTS-STARTPTS[v{index}]")
         labels.append(f"[v{index}]")
 
-    filters.append(f"{''.join(labels)}concat=n={len(windows)}:v=1:a=0[vout]")
+    filters.append(f"{''.join(labels)}concat=n={len(windows)}:v=1:a=0[vconcat]")
+
+    # The take is the device's native 2868x1320 and has to be the 1920x886 App
+    # Store Connect accepts. The housing is taken out by laying the game's own
+    # untouched letterbox column - the one at the other edge - over the column it
+    # sits in. Both are the same flat colour from the same renderer, so this is a
+    # copy rather than a painted patch, and it leaves a clean, frame-high column
+    # with no fill edge for the encoder to ring against.
+    if housing is None:
+        filters.append(f"[vconcat]scale={WIDTH}:{HEIGHT}:flags=lanczos,setsar=1[vout]")
+    else:
+        # A patch of picture immediately beside the housing, laid over it. On the
+        # screens that letterbox, that patch is the flat column colour; on a bout,
+        # where the arena runs to the edge, it is the arena beside it. Either way
+        # it is the frame's own pixels rather than a invented fill.
+        x, y, w, h = housing
+        filters.append(
+            f"[vconcat]split[frame][duplicate];"
+            f"[duplicate]crop={w}:{h}:{min(x + w, take_width - w)}:{y}[patch];"
+            f"[frame][patch]overlay={x}:{y}[covered];"
+            f"[covered]scale={WIDTH}:{HEIGHT}:flags=lanczos,setsar=1[vout]")
 
     # The music swaps over where the edit reaches the bout, crossfaded so the
     # change of track is not a click.
-    bout_index = next(i for i, segment in enumerate(EDIT) if segment[0] == "beat:bout-in")
+    bout_index = next(i for i, segment in enumerate(EDIT) if segment[0].startswith("bout:"))
     bout_at = sum(end - start for start, end in windows[:bout_index])
     total = sum(end - start for start, end in windows)
     menu_length = bout_at + CROSSFADE / 2
@@ -217,9 +301,10 @@ def assemble(windows: list[tuple[float, float]], take: str, out: str) -> float:
         "-stream_loop", "4", "-i", FIGHT_TRACK,
         "-filter_complex", ";".join(filters + [audio]),
         "-map", "[vout]", "-map", "[aout]",
-        "-c:v", "libx264", "-preset", "slow", "-crf", "18",
-        "-pix_fmt", "yuv420p", "-r", "60", "-g", "60",
-        "-c:a", "aac", "-b:a", "192k", "-ar", "44100",
+        "-c:v", "libx264", "-preset", "slow", "-profile:v", "high", "-level", "4.0",
+        "-crf", str(QUALITY), "-maxrate", "12M", "-bufsize", "22M",
+        "-pix_fmt", "yuv420p", "-r", str(FRAMES), "-g", str(FRAMES),
+        "-c:a", "aac", "-b:a", AUDIO_RATE, "-ar", SAMPLE_RATE, "-ac", "2",
         "-movflags", "+faststart",
         out,
     ])
@@ -257,7 +342,11 @@ def record(args, work: str) -> tuple[str, dict[str, dt.datetime], str]:
     take = os.path.join(work, "take.mov")
     print(f"recording {device} ...")
     recorder = subprocess.Popen(
-        ["xcrun", "simctl", "io", device, "recordVideo", "--codec=h264", "--force", take],
+        # --mask=ignored films the framebuffer rather than the device's shape: without
+        # it the Dynamic Island is burnt in as a black pill down one edge of the
+        # rotated picture, which is not something a store preview should show.
+        ["xcrun", "simctl", "io", device, "recordVideo", "--codec=h264", "--mask=ignored",
+         "--force", take],
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
 
     environment = dict(os.environ,
@@ -365,6 +454,26 @@ def main() -> int:
 
         if not 15.0 <= duration(args.out) <= 30.0:
             raise EditError("the written file is not an app preview length")
+
+        probe = json.loads(run([
+            "ffprobe", "-v", "error",
+            "-show_entries", "stream=codec_type,codec_name,width,height,avg_frame_rate,duration",
+            "-of", "json", args.out], capture_output=True).stdout)
+        video = next(s for s in probe["streams"] if s["codec_type"] == "video")
+        if (video["width"], video["height"]) != (WIDTH, HEIGHT):
+            raise EditError(f"wrote {video['width']}x{video['height']}, App Store Connect "
+                            f"accepts {WIDTH}x{HEIGHT}")
+        if video["avg_frame_rate"] not in (f"{FRAMES}/1", f"{FRAMES}/1s"):
+            raise EditError(f"wrote {video['avg_frame_rate']} fps, the cap is {FRAMES}")
+        if not any(s["codec_type"] == "audio" for s in probe["streams"]):
+            raise EditError("the preview has no audio track")
+
+        # A variable-rate take can leave the picture short of the music: the file
+        # plays on with the last frame frozen, which is not a preview.
+        lengths = {s["codec_type"]: float(s.get("duration", 0)) for s in probe["streams"]}
+        if abs(lengths["video"] - lengths["audio"]) > 0.1:
+            raise EditError(f"picture is {lengths['video']:.2f}s but sound is "
+                            f"{lengths['audio']:.2f}s")
 
         print(f"ok: {args.out} ({written:.1f}s planned)")
 

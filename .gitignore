@@ -6,6 +6,8 @@ obj/
 .idea/
 .DS_Store
 out/
+# Distribution builds: one folder per platform, nothing here is tracked.
+Release/
 *.app/
 *.apk
 *.ipa

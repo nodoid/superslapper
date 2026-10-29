@@ -339,15 +339,20 @@ when they fail.
 
 ### Desktop
 
-Self-contained, one folder per platform:
+Self-contained, one folder per platform, all of them under `Release/`:
 
 ```bash
-dotnet publish src/SuperSlapper.Desktop -f net10.0 -c Release -r osx-arm64 --self-contained -o out/mac
-dotnet publish src/SuperSlapper.Desktop -f net10.0 -c Release -r linux-x64 --self-contained -o out/linux
-dotnet publish src/SuperSlapper.Desktop -f net10.0-windows -c Release -r win-x64 --self-contained -o out/windows
+dotnet publish src/SuperSlapper.Desktop -f net10.0 -c Release -r osx-arm64 --self-contained -o Release/mac
+dotnet publish src/SuperSlapper.Desktop -f net10.0 -c Release -r linux-x64 --self-contained -o Release/linux
+dotnet publish src/SuperSlapper.Desktop -f net10.0-windows -c Release -r win-x64 --self-contained -o Release/windows
 ```
 
-Windows also accepts `-r win-arm64`. `out/` is not tracked by git.
+Windows also accepts `-r win-arm64`. `Release/` is not tracked by git: it holds
+the things that are handed out, one folder per platform, so a build to upload is
+a folder to zip rather than something dug out of `bin/`. The mobile heads publish
+into their own `bin/Release` folders, which is where the SDK puts the package;
+copy the finished `.apk`/`.aab` or `.ipa` into `Release/` alongside them if you
+want every distribution artefact in one place.
 
 ### Android
 

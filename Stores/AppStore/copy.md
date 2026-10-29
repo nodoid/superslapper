@@ -149,5 +149,9 @@ with one line of copy down the left. Nothing in them is a mock-up: the HUD, the
 weigh-in needle and the fight screen are exactly what the app draws.
 
 The **app preview** video is the gameplay recording kept outside this repository
-at `~/Movies/SuperSlapper-iOS-Gameplay.mp4` (landscape, matching the 6.9-inch
-set). App previews must be 15-30 seconds long, which the cut is.
+at `~/Movies/SuperSlapper - iOS gameplay (iPhone 18 Pro Max).mp4`: 1920x886
+landscape, 30 fps, H.264 High Profile 4.0, 26-27 seconds, stereo AAC 256 kbps -
+the resolution App Store Connect accepts for an iPhone preview and the length
+band it requires. `tools/storegen/video.py` records it from the simulator and
+cuts it on the demo's own beats; `tools/storegen/mac_video.py` makes the macOS
+counterpart at 1920x1080.
