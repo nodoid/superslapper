@@ -530,7 +530,9 @@ identity page, and package validation compares them field by field: `Identity`
 Name is `49556nodoid.SuperSlapper`, `Publisher` is `CN=A6EAEB04-6634-41C1-BDFE-695819ECE444`,
 and `PublisherDisplayName` is `all-the-johnsons`, the account name rather than a
 person's name. Any difference is refused by name, so copy them from Partner
-Center rather than deriving them.
+Center rather than deriving them. `DisplayName` is `Super Slapper`, the app name
+reserved on that account — the reserved spelling has a space, which `Identity`
+does not.
 
 A self-signed certificate installs on a machine that trusts it and nowhere else.
 Its subject is the publisher identity above, the same string as the manifest's

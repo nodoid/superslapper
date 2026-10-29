@@ -6,7 +6,7 @@ the lengths are checked by `python3 tools/storegen/main.py`.
 
 | Field | Value |
 | --- | --- |
-| Product name | SuperSlapper |
+| Product name | Super Slapper |
 | Developer / publisher | all-the-johnsons |
 | Package | `SuperSlapper` (Windows desktop head, `net10.0-windows`) |
 | Version / release | 1.0 (first release) |
@@ -17,7 +17,7 @@ the lengths are checked by `python3 tools/storegen/main.py`.
 ## Product name (max 30)
 
 <!-- field name="Product name" limit="30" -->
-SuperSlapper
+Super Slapper
 <!-- /field -->
 
 ## Short description (make it fit 270; the field itself allows 1,000)

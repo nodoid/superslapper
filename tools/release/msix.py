@@ -32,7 +32,10 @@ PUBLISHER = "CN=A6EAEB04-6634-41C1-BDFE-695819ECE444"
 # refuses the package if the two differ, so it is the account name, not the
 # person's name. The Identity Publisher above is a separate field.
 PUBLISHER_DISPLAY = "all-the-johnsons"
-DISPLAY_NAME = "SuperSlapper"
+# This is the app name reserved on the Partner Center account, spelling and
+# spacing included: validation refuses a Package/Properties/DisplayName that is
+# not one of the reserved names, however close it reads.
+DISPLAY_NAME = "Super Slapper"
 DESCRIPTION = "Slap-fighting career sim"
 VERSION = "1.0.0.0"
 MIN_WINDOWS = "10.0.17763.0"
