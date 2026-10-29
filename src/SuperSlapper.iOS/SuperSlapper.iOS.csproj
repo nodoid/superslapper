@@ -10,7 +10,7 @@
     <RootNamespace>SuperSlapper.iOS</RootNamespace>
     <ApplicationId>uk.co.allthejohnsons.superslapper</ApplicationId>
     <ApplicationTitle>SuperSlapper</ApplicationTitle>
-    <ApplicationVersion>1</ApplicationVersion>
+    <ApplicationVersion>2</ApplicationVersion>
     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
     <Company>Paul F. Johnson</Company>
     <Product>SuperSlapper</Product>
