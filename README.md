@@ -343,8 +343,8 @@ Self-contained, one folder per platform, all of them under `Release/`:
 
 ```bash
 ./tools/release/macos.sh
+./tools/release/windows.sh
 dotnet publish src/SuperSlapper.Desktop -f net10.0 -c Release -r linux-x64 --self-contained -o Release/linux
-dotnet publish src/SuperSlapper.Desktop -f net10.0-windows -c Release -r win-x64 --self-contained -o Release/windows
 ```
 
 Windows also accepts `-r win-arm64`. `Release/` is not tracked by git: it holds
@@ -356,6 +356,8 @@ the only build that is handed out:
 
 ```bash
 dotnet publish src/SuperSlapper.Android -f net10.0-android -c Release -o Release/android
+  -p:AndroidKeyStore=true -p:AndroidSigningKeyStore=$KS -p:AndroidSigningStorePass=$SP
+  -p:AndroidSigningKeyAlias=superslapper -p:AndroidSigningKeyPass=$KP
 dotnet build src/SuperSlapper.iOS -f net10.0-ios -c Release -r ios-arm64 -p:MtouchUseLlvm=false
 rm -rf Release/ios/SuperSlapper.app
 mv src/SuperSlapper.iOS/bin/Release/net10.0-ios/ios-arm64/SuperSlapper.app Release/ios/
@@ -375,7 +377,15 @@ test builds.
 
 ```bash
 ./tools/release/macos.sh
+productbuild --component Release/mac/SuperSlapper.app /Applications \
+  --sign "3rd Party Mac Developer Installer: Paul Johnson (3UH7BE38T3)" \
+  Release/mac/SuperSlapper.pkg
 ```
+
+Two artefacts land in `Release/mac`: the `.app` and the `.pkg` App Store Connect
+takes. The installer package is signed with the *installer* identity, not the app
+identity - `pkgutil --check-signature` names it, and an upload signed with the
+Apple Distribution certificate alone is rejected.
 
 `Release/mac` is a `.app`, not a folder: the macOS build is signed for the Mac
 App Store with the Apple Distribution certificate and the `rel-slapper-mac`
@@ -403,9 +413,23 @@ dotnet publish src/SuperSlapper.Android -f net10.0-android -c Release -o Release
 same publish. The folder `-o` writes also carries the unsigned packages and a
 resource-designer assembly, so anything else that appears there is not part of
 the artefact. That publishes every ABI; add `-r android-arm64` (or `android-x64`,
-`android-arm`) to build one. The package is signed with the Android debug key
-unless you configure a release keystore, so it is installable but not
-store-ready.
+`android-arm`) to build one.
+
+Signing uses an upload keystore, kept out of the repository in `~/keystores`
+alongside a properties file that holds the passwords:
+
+```bash
+P=~/keystores/superslapper-signing.properties
+SP=$(grep '^storePassword' $P | cut -d= -f2); KP=$(grep '^keyPassword' $P | cut -d= -f2)
+KS=$(grep '^storeFile' $P | cut -d= -f2); AL=$(grep '^keyAlias' $P | cut -d= -f2)
+dotnet publish src/SuperSlapper.Android -f net10.0-android -c Release -o Release/android \
+  -p:AndroidKeyStore=true -p:AndroidSigningKeyStore=$KS -p:AndroidSigningStorePass=$SP \
+  -p:AndroidSigningKeyAlias=$AL -p:AndroidSigningKeyPass=$KP
+```
+
+Without `AndroidKeyStore` the package is signed with the Android debug key, which
+installs but is refused by Play. The keystore is the upload key: back it up, and
+enrol Play App Signing so a lost upload key can still be replaced.
 
 ### iOS
 
@@ -421,7 +445,18 @@ configuration uses the Apple Distribution certificate, the App Store profile
 (`rel-slapper`) and `Entitlements.Distribution.plist`, which has no
 `get-task-allow` because the store profile forbids it. Edit those four settings
 for your own team. `Release/ios/SuperSlapper.app` is the distribution-signed
-build, ready for a store upload; it will not install on a phone for testing.
+build; it will not install on a phone for testing, so it is an upload, not a
+test build.
+
+App Store Connect takes an `.ipa`, which is the same bundle in a `Payload`
+folder:
+
+```bash
+rm -rf /tmp/ipa && mkdir -p /tmp/ipa/Payload
+cp -R Release/ios/SuperSlapper.app /tmp/ipa/Payload/
+(cd /tmp/ipa && zip -qry SuperSlapper.ipa Payload)
+mv /tmp/ipa/SuperSlapper.ipa Release/ios/
+```
 
 The app ships a privacy manifest, `src/SuperSlapper.iOS/PrivacyInfo.xcprivacy`,
 declaring the two required-reason APIs it uses: file timestamps (`C61E.1`) when it
@@ -449,6 +484,28 @@ The console shows every `[selftest]` and `[buttons]` line as it happens, and
 `--console` is the only report on a phone: iOS forbids an app terminating itself,
 so there is no exit code to read. The captures end up in the app's own
 `Documents/selftest`, which `xcrun devicectl device info files` lists.
+
+### Windows
+
+```bash
+./tools/release/windows.sh
+```
+
+`Release/windows` holds two MSIX packages, `SuperSlapper-x64.msix` and
+`SuperSlapper-arm64.msix`, plus the self-signed certificate they are signed with.
+
+The publish runs here; the packaging runs in the Parallels VM, because `makeappx`
+and `signtool` are Windows tools. The VM (`WINDOWS_VM`, default `Windows 11`) reads
+the staged layout through its shared folder and writes the package back.
+`tools/release/msix.py` writes the `AppxManifest.xml` and the tile images, and the
+scripts in `tools/release/windows` are the ones that run inside the guest; see
+`tools/release/windows/README.md` for the one-off setup.
+
+A self-signed certificate installs on a machine that trusts it and nowhere else:
+the Microsoft Store wants a certificate from a CA, or one issued through Partner
+Center, whose subject matches the publisher in the manifest. The certificate is
+created once and then reused, because signing each build with a fresh one changes
+the package identity and orphans the previous install.
 
 ## Regenerating content
 

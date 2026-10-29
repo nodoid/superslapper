@@ -12,4 +12,9 @@ out/
 *.app/
 *.apk
 *.ipa
+*.msix
+*.pkg
+*.pfx
+*.keystore
+*.jks
 TestResults/
