@@ -351,8 +351,18 @@ Windows also accepts `-r win-arm64`. `Release/` is not tracked by git: it holds
 the things that are handed out, one folder per platform, so a build to upload is
 a folder to zip rather than something dug out of `bin/`. The mobile heads publish
 into their own `bin/Release` folders, which is where the SDK puts the package;
-copy the finished `.apk`/`.aab` or `.ipa` into `Release/` alongside them if you
-want every distribution artefact in one place.
+their finished artefacts are copied into `Release/` too:
+
+```bash
+dotnet publish src/SuperSlapper.Android -f net10.0-android -c Release -o Release/android
+dotnet build src/SuperSlapper.iOS -f net10.0-ios -c Release -r ios-arm64 -p:MtouchUseLlvm=false
+cp -R src/SuperSlapper.iOS/bin/Release/net10.0-ios/ios-arm64/SuperSlapper.app Release/ios/
+```
+
+The iOS build leaves LLVM code generation off: it is a Release build either way,
+and LLVM AOT turns a two-minute link into an hour. `Release/mac` carries
+`PrivacyInfo.xcprivacy` beside the executable (see the privacy note above);
+`Release/ios/SuperSlapper.app` has it at the root of the bundle.
 
 ### Android
 
@@ -380,7 +390,12 @@ The app ships a privacy manifest, `src/SuperSlapper.iOS/PrivacyInfo.xcprivacy`,
 declaring the two required-reason APIs it uses: file timestamps (`C61E.1`) when it
 reads and writes the save, and user defaults (`CA92.1`) for the preferences that
 sit beside it. It is copied to the root of the bundle by the iOS project; App
-Store review looks for it there. The iPhone smoke
+Store review looks for it there. The macOS head carries the same file
+(`src/SuperSlapper.Desktop/PrivacyInfo.xcprivacy`), and it is published beside the
+executable in `Release/mac`, because a macOS build is handed out as a folder
+rather than a bundle. A Mac App Store build has to be a `.app` with the manifest
+at `Contents/Resources/PrivacyInfo.xcprivacy` - that is the path review checks,
+and a copy next to the binary will not be found. The iPhone smoke
 test runs the self-test on device by launching with `SUPERSLAPPER_SELFTEST=selftest`,
 which writes the captures into the app's own Documents folder. With a phone
 plugged in and paired, that is:

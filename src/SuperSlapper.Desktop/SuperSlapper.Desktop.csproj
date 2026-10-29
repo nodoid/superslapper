@@ -35,6 +35,15 @@
           Link="Content\%(RecursiveDir)%(Filename)%(Extension)"
           CopyToOutputDirectory="PreserveNewest"
           CopyToPublishDirectory="PreserveNewest" />
+    <!-- The same privacy manifest the iOS bundle ships, beside the macOS
+         executable. Desktop builds are handed out as a folder rather than a
+         bundle, so it sits next to the binary; a Mac App Store build has to
+         move it into Contents/Resources, which is where the store looks. Apple
+         only, so the Linux and Windows folders do not carry it. -->
+    <None Include="PrivacyInfo.xcprivacy"
+          Condition="$(RuntimeIdentifier.StartsWith('osx'))"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
