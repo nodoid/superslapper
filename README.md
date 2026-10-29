@@ -351,12 +351,14 @@ Windows also accepts `-r win-arm64`. `Release/` is not tracked by git: it holds
 the things that are handed out, one folder per platform, so a build to upload is
 a folder to zip rather than something dug out of `bin/`. The mobile heads publish
 into their own `bin/Release` folders, which is where the SDK puts the package;
-their finished artefacts are copied into `Release/` too:
+their finished artefacts are moved into `Release/`, so the copy in `Release/` is
+the only build that is handed out:
 
 ```bash
 dotnet publish src/SuperSlapper.Android -f net10.0-android -c Release -o Release/android
 dotnet build src/SuperSlapper.iOS -f net10.0-ios -c Release -r ios-arm64 -p:MtouchUseLlvm=false
-cp -R src/SuperSlapper.iOS/bin/Release/net10.0-ios/ios-arm64/SuperSlapper.app Release/ios/
+rm -rf Release/ios/SuperSlapper.app
+mv src/SuperSlapper.iOS/bin/Release/net10.0-ios/ios-arm64/SuperSlapper.app Release/ios/
 ```
 
 The iOS build leaves LLVM code generation off: it is a Release build either way,
