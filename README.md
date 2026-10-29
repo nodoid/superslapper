@@ -395,13 +395,17 @@ that fixed before it can carry the entitlement.
 ### Android
 
 ```bash
-dotnet publish src/SuperSlapper.Android -f net10.0-android -c Release
+dotnet publish src/SuperSlapper.Android -f net10.0-android -c Release -o Release/android
 ```
 
-An APK and an AAB land in `src/SuperSlapper.Android/bin/Release/net10.0-android/publish`.
-That publishes every ABI; add `-r android-arm64` (or `android-x64`, `android-arm`)
-to build one. The package is signed with the Android debug key unless you
-configure a release keystore, so it is installable but not store-ready.
+`Release/android` keeps the two files a store takes, and nothing else: the
+`-Signed.apk` to install and the `-Signed.aab` to upload, both built from the
+same publish. The folder `-o` writes also carries the unsigned packages and a
+resource-designer assembly, so anything else that appears there is not part of
+the artefact. That publishes every ABI; add `-r android-arm64` (or `android-x64`,
+`android-arm`) to build one. The package is signed with the Android debug key
+unless you configure a release keystore, so it is installable but not
+store-ready.
 
 ### iOS
 
