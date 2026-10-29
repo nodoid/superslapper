@@ -57,6 +57,14 @@ Exact requirements and their sources are in `tools/storegen/specs.py`.
 | AppStore | `images/screenshots_ipad_13_2752x2064/06_make_the_weight.png` | 2752x2064 | 541 KB |
 | AppStore | `images/screenshots_ipad_13_2752x2064/07_aim_the_slap.png` | 2752x2064 | 799 KB |
 | AppStore | `images/screenshots_ipad_13_2752x2064/08_belts_and_purses.png` | 2752x2064 | 507 KB |
+| AppStore | `images/screenshots_mac_2880x1800/01_build_a_fighter.png` | 2880x1800 | 784 KB |
+| AppStore | `images/screenshots_mac_2880x1800/02_run_the_career.png` | 2880x1800 | 787 KB |
+| AppStore | `images/screenshots_mac_2880x1800/03_train_the_camp.png` | 2880x1800 | 910 KB |
+| AppStore | `images/screenshots_mac_2880x1800/04_fight_nights_on_a_calendar.png` | 2880x1800 | 648 KB |
+| AppStore | `images/screenshots_mac_2880x1800/05_five_bouts_a_card.png` | 2880x1800 | 732 KB |
+| AppStore | `images/screenshots_mac_2880x1800/06_make_the_weight.png` | 2880x1800 | 603 KB |
+| AppStore | `images/screenshots_mac_2880x1800/07_aim_the_slap.png` | 2880x1800 | 932 KB |
+| AppStore | `images/screenshots_mac_2880x1800/08_belts_and_purses.png` | 2880x1800 | 562 KB |
 | GooglePlay | `images/icon_512.png` | 512x512 | 92 KB |
 | GooglePlay | `images/feature_graphic_1024x500.png` | 1024x500 | 229 KB |
 | GooglePlay | `images/screenshots_phone_1920x1080/01_build_a_fighter.png` | 1920x1080 | 492 KB |

@@ -137,12 +137,17 @@ nothing leaves the device. Answer "Data Not Collected" for every category, and
 | iPhone with Dynamic Island (medium display) | `images/screenshots_iphone_medium_2622x1206/01-08` | 2622x1206 | Yes - this is the required iPhone size |
 | iPhone 6.9-inch (large display) | `images/screenshots_iphone_6.9_2868x1320/01-08` | 2868x1320 | Optional - accepted size, used on the large phones |
 | iPad 13-inch | `images/screenshots_ipad_13_2752x2064/01-08` | 2752x2064 | Yes - the app declares iPad support (`UIDeviceFamily` 1 and 2) |
+| Mac | `images/screenshots_mac_2880x1800/01-08` | 2880x1800 | Yes - one screenshot is required for the macOS build |
 | App icon | `images/icon_1024.png` | 1024x1024 | Yes, square, no transparency |
 
-All three sets are landscape, 8 shots each (the maximum Apple accepts is 10 per
-size), PNG with no alpha channel. The iPhone sizes are the two the current
-screenshot specification lists: 2622x1206 for the medium display and 2868x1320
-for the 6.9-inch, both of which App Store Connect accepts in landscape.
+Every set has 8 shots (the maximum Apple accepts is 10 per size), PNG with no
+alpha channel. The iPhone and iPad sets are landscape; the Mac set is the 16:10
+that a Mac listing requires. The iPhone sizes are the two the current screenshot
+specification lists: 2622x1206 for the medium display and 2868x1320 for the
+6.9-inch, both of which App Store Connect accepts in landscape. The Mac App
+Store accepts exactly four sizes - 1280x800, 1440x900, 2560x1600 and 2880x1800 -
+and the largest is uploaded, because Connect scales down from it and cannot
+scale a 1280x800 set up.
 
 The screenshots are real captures of the running game on a branded canvas, each
 with one line of copy down the left. Nothing in them is a mock-up: the HUD, the

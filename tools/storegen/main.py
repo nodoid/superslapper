@@ -236,6 +236,8 @@ def main() -> int:
                 specs.APPLE_IPHONE, captioned=True)
     write_shots(os.path.join(apple, "screenshots_ipad_13_2752x2064"), args.captures,
                 specs.APPLE_IPAD, captioned=True)
+    write_shots(os.path.join(apple, "screenshots_mac_2880x1800"), args.captures,
+                specs.APPLE_MAC, captioned=True)
 
     # ---- Google Play
     write_key_art(google, specs.GOOGLE_ICON, {
