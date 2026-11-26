@@ -455,6 +455,17 @@ enrol Play App Signing so a lost upload key can still be replaced.
 dotnet build src/SuperSlapper.iOS -f net10.0-ios -r ios-arm64
 ```
 
+The iOS workload pins the Xcode it was built against and refuses a newer one with
+"This version of .NET for iOS (…) requires Xcode (…)". Add
+`-p:ValidateXcodeVersion=false` to build with the newer Xcode: it is a public
+SDK, and the bundle reports the `DTSDKName` it actually linked. A Release device
+build AOT-compiles every assembly, and the compiler it uses is cached in
+`obj/<Configuration>/net10.0-ios/<rid>/aot-compiler-path-<sdk>.txt`. That cache
+is keyed by SDK version alone, so when a workload update replaces the AOT pack
+(`Microsoft.NETCore.App.Runtime.AOT.osx-arm64.Cross.ios-arm64`) the stale path
+fails as `mono-aot-cross … No such file or directory`; delete the file and the
+next build resolves the pack that is installed.
+
 For the simulator use `-r iossimulator-arm64` (or `iossimulator-x64`). Signing is
 chosen by configuration in `SuperSlapper.iOS.csproj`: a `Debug` device build uses
 the Apple Development certificate, the development profile (`devel-slapper`) and
@@ -466,11 +477,52 @@ for your own team. `Release/ios/SuperSlapper.app` is the distribution-signed
 build; it will not install on a phone for testing, so it is an upload, not a
 test build.
 
-`src/SuperSlapper.iOS/Info.plist` also carries purpose strings for the APIs the
-.NET iOS runtime links but the game never calls: calendar, contacts, microphone,
-Apple Music, Siri, location and Bluetooth. An upload without one per linked API
-is rejected (ITMS-90683) even though nothing ever asks for the permission, and
-no permission prompt appears at runtime.
+The distribution build links the SDK assemblies only (`MtouchLink` in
+`SuperSlapper.iOS.csproj`), and that is what stops it shipping frameworks the
+game has no feature for. 1.0 build 7 was rejected by App Review for using the
+SMS Fraud extension and HealthKit: with the linker off, the runtime links a
+framework for every binding it carries, so `IdentityLookup` and `HKHealthStore`
+were in the binary without a call to either. SDK-only linking drops every binding
+nothing references, and the framework with it. MonoGame's assemblies are
+untouched - a package reference is not an SDK assembly, and the game resolves art
+and audio by name at runtime - and only distribution builds are submitted, so
+`Debug` keeps the linker off for the IDE. HealthKit, HealthKitUI and
+`IdentityLookup` must not appear in the link list again, and the two `NSHealth*`
+keys left `Info.plist` with them: a purpose string does not remove a framework
+reference, it tells the store the app wants the access.
+
+`src/SuperSlapper.iOS/Info.plist` also carries a purpose string for every
+remaining privacy-guarded API the runtime links but the game never calls: camera,
+photo library, microphone, motion, speech recognition, Face ID, contacts,
+calendar and reminders, HomeKit, Apple Music, Siri, location, Bluetooth, NFC,
+nearby interaction and Focus status. The upload scan reads the linked symbols
+rather than the code that runs, so a key missing for any one of them is rejected
+(ITMS-90683) even though nothing ever asks for the permission, and no permission
+prompt appears at runtime.
+
+`NSUserTrackingUsageDescription` is deliberately absent, and the build must stay
+that way. The runtime links AdSupport and AppTrackingTransparency whatever the
+app does, but the game never reaches the advertising identifier and never asks
+for tracking permission. App Store Connect reads the key itself as a statement
+that the app tracks: a binary carrying it is refused at submission unless the App
+Privacy answers declare tracking, so adding the key to satisfy a checker blocks
+the release instead of unblocking it. The App Privacy response for this app is
+and stays "not used for tracking".
+
+That list fails silently until an upload does, so `tools/release/check_ios_plist.py`
+checks it against the build: it reads the frameworks the executable links and
+exits non-zero, naming the key and the framework that wants it, when one is
+missing or empty, then reads the privacy manifest and fails on a reason code
+Apple does not publish for that category or a category the binary imports but
+the manifest does not declare. Point it at the `.app` to check the linked set,
+or at an `Info.plist` to check every guard the runtime can link. Against a
+bundle it also fails when HealthKit, HealthKitUI or `IdentityLookup` is linked -
+the frameworks App Review rejected build 7 for - and in either mode it fails when
+a health or tracking purpose string is present:
+
+```bash
+python3 tools/release/check_ios_plist.py Release/ios/SuperSlapper.app
+```
 
 App Store Connect takes an `.ipa`, which is the same bundle in a `Payload`
 folder:
@@ -483,10 +535,16 @@ mv /tmp/ipa/SuperSlapper.ipa Release/ios/
 ```
 
 The app ships a privacy manifest, `src/SuperSlapper.iOS/PrivacyInfo.xcprivacy`,
-declaring the two required-reason APIs it uses: file timestamps (`C61E.1`) when it
-reads and writes the save, and user defaults (`CA92.1`) for the preferences that
-sit beside it. It is copied to the root of the bundle by the iOS project; App
-Store review looks for it there. The macOS head carries the same file
+declaring every required-reason API the runtime references, each under an
+approved code for its own category: file timestamps (`C617.1`) for the save in
+the app's container, system boot time (`35F9.1`) for the timers, disk space
+(`E174.1`) for room before a write, user defaults (`CA92.1`) for the preferences
+beside the save, and active keyboards (`54BD.1`) for the text-input binding the
+runtime links but the game never calls. A category the binary imports and the
+manifest leaves out is reported as ITMS-91053, and a code filed under the wrong
+category is ITMS-91055, so the guard above checks both lists. The manifest is
+copied to the root of the bundle by the iOS project; App Store review looks for
+it there. The macOS head carries the same file
 (`src/SuperSlapper.Desktop/PrivacyInfo.xcprivacy`), placed by
 `tools/release/macos.sh` at `Contents/Resources/PrivacyInfo.xcprivacy` - that is
 the path review checks for a macOS bundle, and a copy next to the binary would

@@ -4,7 +4,7 @@
 | --- | --- |
 | App name | SuperSlapper |
 | Bundle id | `uk.co.allthejohnsons.superslapper` |
-| Version | 1.0 (build 2) |
+| Version | 1.0 (build 8) |
 | Seller / artist | Paul F. Johnson |
 | SKU (suggested) | `superslapper-ios` |
 | Primary category | Games → Sports |

@@ -2,6 +2,14 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <!-- Every required-reason API the .NET iOS runtime references, not only the
+         ones the game calls. The scan reads the linked binary, which imports
+         stat, fstat, lstat, statfs, fstatfs and mach_absolute_time and carries
+         the attributesOfItemAtPath:, attributesOfFileSystemForPath:,
+         systemUptime, NSUserDefaults and activeInputModes selectors. A linked
+         category left out is reported as ITMS-91053; a code borrowed from
+         another category is ITMS-91055, because the approved codes are specific
+         to the category they appear under. -->
     <key>NSPrivacyAccessedAPITypes</key>
     <array>
         <dict>
@@ -9,7 +17,29 @@
             <string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
             <key>NSPrivacyAccessedAPITypeReasons</key>
             <array>
-                <string>C61E.1</string>
+                <!-- C617.1: metadata of files in the app's own container, which is
+                     where career.json and settings.json are read and written. -->
+                <string>C617.1</string>
+            </array>
+        </dict>
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategorySystemBootTime</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <!-- 35F9.1: elapsed time between events and the game's timers. The
+                     boot time itself never leaves the device. -->
+                <string>35F9.1</string>
+            </array>
+        </dict>
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryDiskSpace</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <!-- E174.1: room for the save before it is written. A full device
+                     surfaces as a failed write the camp screen reports. -->
+                <string>E174.1</string>
             </array>
         </dict>
         <dict>
@@ -17,7 +47,19 @@
             <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
             <key>NSPrivacyAccessedAPITypeReasons</key>
             <array>
+                <!-- CA92.1: the app's own defaults, which the runtime reads and no
+                     other app can see. -->
                 <string>CA92.1</string>
+            </array>
+        </dict>
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryActiveKeyboards</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <!-- 54BD.1: the runtime links the listed-keyboard API to lay out
+                     text input. The game has no text input and never reads it. -->
+                <string>54BD.1</string>
             </array>
         </dict>
     </array>

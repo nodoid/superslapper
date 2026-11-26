@@ -15,7 +15,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
-	<string>2</string>
+	<string>8</string>
 	<key>CFBundleExecutable</key>
 	<string>SuperSlapper</string>
 	<key>CFBundlePackageType</key>
@@ -26,25 +26,70 @@
 	<string>18.0</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>© 2026 Paul F. Johnson. All rights reserved.</string>
-	<!-- The .NET iOS runtime links a framework for every binding, including APIs
-	     the game never calls, and validation asks for a purpose string for each.
-	     These keep the bundle uploadable; none of them is ever requested. -->
+	<!-- The upload scan reads the linked symbols, not what the code reaches, so
+	     every privacy-guarded framework the binary links needs a purpose string.
+	     The distribution build links the SDK assemblies only (see the comment on
+	     MtouchLink in SuperSlapper.iOS.csproj), which drops the bindings nothing
+	     references along with their frameworks, and these keys cover the ones that
+	     survive. None of them is ever requested, so no permission prompt appears
+	     at runtime.
+	     HealthKit is deliberately gone. 1.0 build 7 was rejected for using the SMS
+	     Fraud extension and HealthKit: the unlinked build carried HKHealthStore and
+	     IdentityLookup whatever the game did. Trimming removed both, so the two
+	     NSHealth* keys went with them - Apple asks for the plist keys to go as well
+	     as the references, and a key left behind would keep claiming health access.
+	     tools/release/check_ios_plist.py fails if either key or either framework
+	     comes back.
+	     NSUserTrackingUsageDescription is the exception: it is absent on purpose. The
+	     build links AdSupport and AppTrackingTransparency and carries the
+	     advertising-identifier selectors, but the game never reaches them and never
+	     asks for tracking permission. App Store Connect reads the key itself as a
+	     claim that the app tracks, and refuses to submit a binary carrying it unless
+	     the App Privacy answers declare tracking, so a build that does not track must
+	     not have it. tools/release/check_ios_plist.py checks that direction and fails
+	     if the key is present. -->
+	<key>NFCReaderUsageDescription</key>
+	<string>SuperSlapper does not scan NFC tags.</string>
 	<key>NSAppleMusicUsageDescription</key>
 	<string>SuperSlapper does not access your Apple Music library.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>SuperSlapper does not use Bluetooth.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>SuperSlapper does not read or write your calendar.</string>
 	<key>NSCalendarsUsageDescription</key>
 	<string>SuperSlapper does not read or write your calendar.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>SuperSlapper does not use the camera.</string>
 	<key>NSContactsUsageDescription</key>
 	<string>SuperSlapper does not read your contacts.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>SuperSlapper does not use Face ID.</string>
+	<key>NSFocusStatusUsageDescription</key>
+	<string>SuperSlapper does not read your Focus status.</string>
+	<key>NSHomeKitUsageDescription</key>
+	<string>SuperSlapper does not control your home accessories.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>SuperSlapper does not use your location.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>SuperSlapper does not use your location.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>SuperSlapper plays sound but does not record from the microphone.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>SuperSlapper does not use the motion sensors.</string>
+	<key>NSNearbyInteractionUsageDescription</key>
+	<string>SuperSlapper does not measure distance to nearby devices.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>SuperSlapper does not save to your photo library.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>SuperSlapper does not read your photo library.</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>SuperSlapper does not read or write your reminders.</string>
+	<key>NSRemindersUsageDescription</key>
+	<string>SuperSlapper does not read or write your reminders.</string>
 	<key>NSSiriUsageDescription</key>
 	<string>SuperSlapper does not use Siri.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>SuperSlapper does not use speech recognition.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UIRequiresFullScreen</key>

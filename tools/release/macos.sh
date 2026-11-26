@@ -23,7 +23,7 @@ resources="$app/Contents/Resources"
 identity="${MAC_SIGN_IDENTITY:-Apple Distribution: Paul Johnson (3UH7BE38T3)}"
 profile_name="${MAC_PROFILE_NAME:-rel-slapper-mac}"
 version="${MAC_BUNDLE_VERSION:-1.0.0}"
-build_number="${MAC_BUILD_NUMBER:-2}"
+build_number="${MAC_BUILD_NUMBER:-4}"
 
 profile="${MAC_PROFILE:-}"
 if [ -z "$profile" ]; then

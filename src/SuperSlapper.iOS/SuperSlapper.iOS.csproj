@@ -10,7 +10,7 @@
     <RootNamespace>SuperSlapper.iOS</RootNamespace>
     <ApplicationId>uk.co.allthejohnsons.superslapper</ApplicationId>
     <ApplicationTitle>SuperSlapper</ApplicationTitle>
-    <ApplicationVersion>2</ApplicationVersion>
+    <ApplicationVersion>8</ApplicationVersion>
     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
     <Company>Paul F. Johnson</Company>
     <Product>SuperSlapper</Product>
@@ -28,8 +28,18 @@
     <!-- Distribution entitlements carry no get-task-allow: the App Store profile
          forbids it, and a bundle signed with it is refused. -->
     <CodesignEntitlements Condition="'$(Configuration)' != 'Debug'">Entitlements.Distribution.plist</CodesignEntitlements>
-    <!-- MonoGame resolves art and audio by name at runtime, so keep trimming off. -->
-    <MtouchLink>None</MtouchLink>
+    <!-- Apple's upload scan reads the frameworks the binary links, not the code
+         that runs, and an unlinked build links one for every binding the runtime
+         carries. That is how 1.0 build 7 shipped the SMS Fraud extension
+         (IdentityLookup) and HealthKit, and App Review rejected it for using
+         frameworks the game has no feature for: a purpose string does not make
+         the reference go away. Linking the SDK assemblies only drops every
+         binding nothing reaches, and the framework with it, while MonoGame's own
+         assemblies stay whole - a package reference is not an SDK assembly, and
+         the game resolves art and audio by name at runtime. Only the distribution
+         configurations are submitted, so Debug keeps the linker off for the IDE. -->
+    <MtouchLink Condition="'$(Configuration)' != 'Debug'">SdkOnly</MtouchLink>
+    <MtouchLink Condition="'$(Configuration)' == 'Debug'">None</MtouchLink>
     <RuntimeIdentifier>ios-arm64</RuntimeIdentifier>
     <!-- Names the asset-catalog app icon; without it actool builds the catalog
          but produces no icon, and the home screen shows a blank square. -->
@@ -45,6 +55,16 @@
   <ItemGroup>
     <BundleResource Include="..\..\Content\**\*.*"
                     Link="Content\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- SDL plays sound through OpenAL, which is a native static library: nothing
+         in the managed code references AudioToolbox, so SDK-only linking drops
+         the framework and the link then fails on AudioComponentFindNext and the
+         rest of CoreAudio's entry points. Audio is a real feature of the game, so
+         the framework is named here instead of being left to the scan. -->
+    <LinkerArgument Include="-framework" Condition="'$(Configuration)' != 'Debug'" />
+    <LinkerArgument Include="AudioToolbox" Condition="'$(Configuration)' != 'Debug'" />
   </ItemGroup>
 
   <ItemGroup>
